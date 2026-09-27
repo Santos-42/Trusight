@@ -45,4 +45,10 @@ Atau manual: `npm run deploy` (butuh `wrangler login`).
 - [x] Fase 1 buyer MVP (semua layar mockup ada, data mock + API kontrak §9)
 - [x] Fase 2 stub (order/pay webhook, R2 sign, report) — tinggal isi kredensial Midtrans/Xendit + R2 signed URL produksi
 - [x] Fase 3 seller/inspector/admin dasar + GPS check-in demo
-- [ ] Fase 4 hardening: GPS 50m strict + EXIF guard, TTD produksi, garansi/komplain, share OLX, PWA/SEO polish, E2E Playwright
+- [x] Fase 4 mockup-first + OSS (tanpa API key berbayar):
+  - GPS strict 50m + peta Leaflet/OSM + reverse-geocode Nominatim
+  - Foto anti-fraud: EXIF `exifr` + kompres `browser-image-compression`
+  - TTD digital `signature_pad`, PDF laporan `pdf-lib`, share/clipboard Web standard
+  - Garansi/komplain mockup (`/app/warranty/[orderId]`), chart admin `chart.js`
+  - PWA manifest + OG meta, session JWT `jose` (helper siap pakai)
+  - Unit `vitest` hijau (5 test), E2E `playwright` spec mockup (tanpa download browser)
