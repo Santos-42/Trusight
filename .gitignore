@@ -38,3 +38,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+
+# dokumen internal (tidak di-commit)
+/Logo.png
+/Summary.md
+/plan.md
+/Ideate/
