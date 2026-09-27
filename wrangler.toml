@@ -1,0 +1,19 @@
+name = "trusight"
+compatibility_date = "2025-09-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "trusight-db"
+database_id = "REPLACE_DENGAN_ID_WRANGLER"
+
+[[r2_buckets]]
+binding = "PHOTOS"
+bucket_name = "trusight-photos"
+
+[[r2_buckets]]
+binding = "REPORTS"
+bucket_name = "trusight-reports"
+
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "REPLACE_DENGAN_ID_WRANGLER"

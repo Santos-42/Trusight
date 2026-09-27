@@ -5,15 +5,19 @@
 /.pnp
 .pnp.js
 
+# sveltekit
+.svelte-kit
+
 # testing
 /coverage
 
-# next.js
-/.next/
-/out/
-
-# production
+# build
 /build
+.svelte-kit/cloudflare
+
+# wrangler
+.wrangler
+.dev.vars
 
 # misc
 .DS_Store
