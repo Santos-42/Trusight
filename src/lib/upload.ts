@@ -21,14 +21,12 @@ export async function signAndUpload(
   purpose: 'vehicle' | 'inspection' | 'avatar' | 'license' | 'signature' | 'chat',
   contentType = 'image/jpeg'
 ): Promise<string> {
-  const sign = await api.post<{ signedUrl: string | null; r2_key: string }>('/uploads/sign', {
+  const sign = await api.post<{ signedUrl: string; r2_key: string }>('/uploads/sign', {
     purpose,
     contentType,
     size: (file as Blob).size
   });
   if (!sign.ok) throw new Error(sign.error.message);
-  // KV-only: signedUrl null → byte disimpan di IndexedDB (client), KV catat metadata.
-  if (!sign.data.signedUrl) return sign.data.r2_key;
   const put = await fetch(sign.data.signedUrl, { method: 'PUT', body: file });
   if (!put.ok) throw new Error(`Upload gagal (${put.status})`);
   return sign.data.r2_key;
