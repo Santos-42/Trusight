@@ -1,25 +1,16 @@
 <script lang="ts">
-  import { rupiah, km, gradeColor, recoColor, recoLabel } from '$lib/format';
-  export let v: {
-    id: string; title: string; year: number; mileage: number; price: number;
-    location: string; status: string; score?: number | null; grade?: string | null;
-    recommendation?: string | null; coverR2?: string | null;
-  };
+  import { BadgeCheck, Car } from '@lucide/svelte';
+  import { rupiah } from '$lib/format';
+  export let v: { id: string; title: string; price: number; location: string; score: number | null };
 </script>
-
-<a href={`/app/vehicle/${v.id}`} class="group overflow-hidden rounded-2xl border bg-white hover:shadow-md transition">
-  <div class="aspect-[4/3] bg-slate-200 grid place-items-center text-slate-400 text-sm">
-    {#if v.coverR2}{v.coverR2}{:else}Foto mobil{/if}
+<a href={`/app/vehicle/${v.id}`} class="overflow-hidden rounded-[20px] bg-white shadow-[0_2px_12px_rgba(28,35,43,0.08)]">
+  <div class="relative grid h-44 place-items-center bg-gradient-to-b from-[#3a4350] to-[#14181e] text-white/90">
+    <Car class="size-24 opacity-90" />
+    <span class="pill-solid absolute left-3 top-3"><BadgeCheck class="size-3.5" /> TRUSIGHT VERIFIED</span>
+    <span class="absolute bottom-3 right-3 rounded-md bg-black/60 px-2 py-1 text-[10px] font-bold">OLX</span>
   </div>
-  <div class="p-4">
-    <div class="flex items-center gap-2">
-      <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-800">{v.status.toUpperCase()}</span>
-      {#if v.grade}<span class="rounded-full px-2 py-0.5 text-[11px] font-bold {gradeColor(v.grade)}">{v.grade}</span>{/if}
-      {#if v.recommendation}<span class="rounded-full px-2 py-0.5 text-[11px] font-bold {recoColor(v.recommendation)}">{recoLabel(v.recommendation)}</span>{/if}
-    </div>
-    <p class="mt-2 font-bold leading-tight group-hover:text-brand-700">{v.title}</p>
-    <p class="text-xs text-slate-500">{v.year} • {km(v.mileage)} • {v.location}</p>
-    <p class="mt-2 font-extrabold">{rupiah(v.price)}</p>
-    {#if v.score != null}<p class="text-xs text-slate-500">Skor TruSight: <b>{v.score}</b>/100</p>{/if}
+  <div class="flex items-center justify-between px-4 py-3.5">
+    <p class="text-[16px] font-bold">{v.title}</p>
+    <p class="text-[16px] font-bold text-brand-600">{rupiah(v.price)}</p>
   </div>
 </a>

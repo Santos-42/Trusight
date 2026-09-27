@@ -1,50 +1,66 @@
 <script lang="ts">
-  import ScoreBadge from '$lib/components/vehicle/ScoreBadge.svelte';
   import { page } from '$app/stores';
+  import { ChevronLeft, Share2, CalendarDays, User, ShieldCheck, CheckCircle2, Car } from '@lucide/svelte';
+  import ScoreRing from '$lib/components/vehicle/ScoreRing.svelte';
   import { buildReportPdf } from '$lib/reportPdf';
   import { shareOrCopy } from '$lib/share';
   $: id = $page.params.id;
   let msg = '';
-
   async function downloadPdf() {
     msg = 'Membuat PDF (pdf-lib, OSS)...';
-    const blob = await buildReportPdf({
-      reportId: id, vehicle: 'Porsche 911 Carrera S 2022',
-      score: 94, grade: 'A', inspector: 'Firman Comstir', date: '24 Okt 2023'
-    });
+    const blob = await buildReportPdf({ reportId: id, vehicle: 'Porsche 911 Carrera S 2022', score: 94, grade: 'A', inspector: 'Firman Comstir', date: '24 Okt 2023' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `${id}.pdf`;
     a.click();
     msg = 'PDF mockup terunduh.';
   }
-
   async function share() {
-    msg = await shareOrCopy({
-      title: 'TruSight Certified', text: 'Lihat laporan verifikasi TruSight:',
-      url: `${location.origin}/app/report/${id}`
-    }) === 'shared' ? 'Dibagikan.' : 'Tautan disalin — tempel ke OLX.';
+    msg = (await shareOrCopy({ title: 'TruSight Certified', text: 'Lihat laporan verifikasi TruSight:', url: `${location.origin}/app/report/${id}` })) === 'shared' ? 'Dibagikan.' : 'Tautan disalin — tempel ke OLX.';
   }
 </script>
 <svelte:head><title>Report {id} — TruSight</title></svelte:head>
-<div class="grid gap-4">
-  <div class="rounded-3xl bg-white border p-6">
-    <p class="text-xs tracking-widest text-slate-400">VERIFICATION REPORT • MOCKUP FASE 4</p>
-    <h1 class="text-xl font-extrabold">Porsche 911 Carrera S, 2022 • Verified Oct 24, 2023</h1>
-    <p class="text-sm text-slate-500">Inspector: Firman Comstir • PASSED • Report {id}</p>
-    <div class="mt-3"><ScoreBadge score={94} grade="A" recommendation="beli" /></div>
-    <ul class="mt-4 text-sm text-slate-600 grid gap-1">
-      <li>• Exterior & Paint: thickness consistent with factory</li>
-      <li>• Engine: compression within 2% across cylinders</li>
-      <li>• Estimasi perbaikan: Rp 2.000.000 (kampas rem aus)</li>
-      <li>• Garansi mesin 30 hari • TTD digital terlampir (mockup)</li>
-    </ul>
-    {#if msg}<p class="mt-2 text-sm">{msg}</p>{/if}
-    <div class="mt-4 flex flex-col sm:flex-row gap-2">
-      <button class="min-h-11 rounded-xl bg-slate-900 px-4 text-sm font-bold text-white" on:click={downloadPdf}>Download PDF (OSS)</button>
-      <button class="min-h-11 rounded-xl border px-4 text-sm font-bold" on:click={share}>Bagikan / Salin Tautan</button>
-      <a href={`/app/warranty/${id}`} class="min-h-11 inline-flex items-center justify-center rounded-xl border px-4 text-sm font-bold">Garansi & Komplain</a>
-      <a href="/app/history" class="min-h-11 inline-flex items-center justify-center rounded-xl border px-4 text-sm font-bold">Kembali</a>
+<div class="mx-auto grid max-w-5xl gap-5 pb-8">
+  <div class="ts-appbar-flush">
+    <a href="/app/history" class="ts-back" aria-label="Kembali"><ChevronLeft class="size-5" /></a>
+    <p class="ts-appbar-title flex-1">Verification Report</p>
+    <button class="ts-back" on:click={share} aria-label="Bagikan"><Share2 class="size-5" /></button>
+  </div>
+  <div class="grid items-start gap-5 lg:grid-cols-[1fr_320px]">
+    <div class="grid gap-5">
+      <div><span class="pill-doc">OFFICIAL DOCUMENT</span></div>
+      <div>
+        <h1 class="text-[26px] font-bold tracking-tight">Porsche 911 <span class="text-brand-600">Carrera S, 2022</span></h1>
+        <div class="mt-2 grid gap-1 text-[13px] text-slate-500">
+          <p class="flex items-center gap-2"><CalendarDays class="size-4" /> Verified: Oct 24, 2023</p>
+          <p class="flex items-center gap-2"><User class="size-4" /> Inspector: Firman Comstir <span class="ml-1 inline-flex items-center gap-1 font-bold text-brand-700"><ShieldCheck class="size-4" /> PASSED</span></p>
+        </div>
+      </div>
+      <ScoreRing score={94} />
+      <div class="grid h-52 place-items-center overflow-hidden rounded-[20px] bg-gradient-to-b from-[#3a4350] to-[#14181e] text-white/90"><Car class="size-28" /></div>
+      <div class="ts-card">
+        <div class="flex items-baseline justify-between">
+          <h2 class="text-lg font-bold">Exterior & Paint</h2>
+          <p class="text-xl font-extrabold"><span class="text-brand-600">92</span><span class="text-sm text-slate-400">/100</span></p>
+        </div>
+        <p class="ts-eyebrow mt-0.5">Visual Inspection</p>
+        <ul class="mt-3 grid gap-3 text-[14px] text-slate-600 lg:grid-cols-3">
+          <li class="flex gap-2"><CheckCircle2 class="mt-0.5 size-5 shrink-0 text-brand-600" /> Paint thickness measurements consistent with factory standards across all panels.</li>
+          <li class="flex gap-2"><CheckCircle2 class="mt-0.5 size-5 shrink-0 text-brand-600" /> Panel gaps are within 0.5mm of manufacturing tolerance.</li>
+          <li class="flex gap-2"><CheckCircle2 class="mt-0.5 size-5 shrink-0 text-brand-600" /> Estimasi perbaikan: Rp 2.000.000 (kampas rem aus) • Garansi 30 hari.</li>
+        </ul>
+      </div>
     </div>
+    <aside class="grid content-start gap-3 lg:sticky lg:top-20">
+      <div class="ts-card grid gap-2 text-sm">
+        <p class="ts-eyebrow">Summary</p>
+        <p><b>Skor:</b> 94/100 • <b>Grade:</b> A</p>
+        <p><b>Rekomendasi:</b> Beli dengan negosiasi ringan</p>
+        <p class="text-slate-500">Garansi mesin & transmisi 30 hari.</p>
+      </div>
+      {#if msg}<p class="text-sm">{msg}</p>{/if}
+      <button class="btn-teal w-full" on:click={downloadPdf}>Download PDF (OSS)</button>
+      <a href={`/app/warranty/${id}`} class="btn-outline w-full">Garansi & Komplain</a>
+    </aside>
   </div>
 </div>

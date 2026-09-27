@@ -5,8 +5,8 @@
   ];
 </script>
 <svelte:head><title>History — TruSight</title></svelte:head>
-<div class="grid gap-3">
-  <h1 class="text-xl font-extrabold">ARCHIVE • Verification History</h1>
+<div class="grid gap-3 lg:grid-cols-2">
+  <h1 class="text-xl font-extrabold lg:col-span-2">ARCHIVE • Verification History</h1>
   {#each items as it}
     <a href="/app/report/REP-3401" class="rounded-2xl border bg-white p-4 flex justify-between items-center">
       <div><p class="font-bold text-sm">{it.title} <span class="text-xs text-slate-400">{it.id}</span></p><p class="text-xs text-slate-500">{it.date} • {it.note}</p></div>

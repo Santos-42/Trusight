@@ -1,14 +1,12 @@
 <script lang="ts">
-  import { Car, ShieldCheck } from '@lucide/svelte';
+  import { ShieldCheck } from '@lucide/svelte';
   import { APP_NAME } from '$lib/config';
 </script>
 
 <header class="sticky top-0 z-40 border-b bg-white/90 backdrop-blur">
   <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
     <a href="/" class="flex items-center gap-2 font-bold text-brand-700">
-      <span class="grid size-9 place-items-center rounded-xl bg-brand-600 text-white">
-        <Car class="size-5" />
-      </span>
+      <img src="/logo.png" alt="TruSight" class="h-9 w-auto object-contain" />
       <span class="text-lg tracking-tight">{APP_NAME}</span>
       <span class="hidden sm:inline text-xs font-medium text-slate-500">Transparency You Can Trust</span>
     </a>

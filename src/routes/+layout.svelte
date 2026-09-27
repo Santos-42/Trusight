@@ -8,13 +8,16 @@
   $: path = $page.url.pathname;
   $: isApp = path.startsWith('/app') || path.startsWith('/seller') || path.startsWith('/inspector') || path.startsWith('/admin');
   $: role = path.startsWith('/seller') ? 'seller' : path.startsWith('/inspector') ? 'inspector' : path.startsWith('/admin') ? 'admin' : 'buyer';
+  $: isAuth = ['/', '/login', '/register', '/forgot', '/otp', '/reset', '/request-account'].includes(path);
 </script>
 
 <div class="min-h-dvh flex flex-col">
-  <TopNav />
+  <div class={isAuth ? 'lg:hidden' : ''}>
+    <TopNav />
+  </div>
   <div class="flex flex-1 w-full mx-auto max-w-7xl">
     {#if isApp}
-      <div class="hidden lg:block">
+      <div class="hidden lg:block lg:sticky lg:top-16 lg:self-start lg:py-6">
         <Sidebar {role} />
       </div>
     {/if}
@@ -24,7 +27,7 @@
   </div>
   {#if isApp}
     <div class="lg:hidden">
-      <BottomNav />
+      <BottomNav {role} />
     </div>
   {/if}
 </div>
