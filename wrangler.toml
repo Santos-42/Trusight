@@ -1,19 +1,9 @@
 name = "trusight"
 compatibility_date = "2025-09-01"
 
-[[d1_databases]]
-binding = "DB"
-database_name = "trusight-db"
-database_id = "REPLACE_DENGAN_ID_WRANGLER"
-
-[[r2_buckets]]
-binding = "PHOTOS"
-bucket_name = "trusight-photos"
-
-[[r2_buckets]]
-binding = "REPORTS"
-bucket_name = "trusight-reports"
-
+# KV-only: satu-satunya binding (D1/R2 belum tersedia di akun ini).
+# Buat namespace: wrangler kv namespace create KV  →  isi id di bawah.
+# Seed: wrangler kv bulk put --binding=KV seed/kv-seed.json
 [[kv_namespaces]]
-binding = "SESSIONS"
+binding = "KV"
 id = "REPLACE_DENGAN_ID_WRANGLER"

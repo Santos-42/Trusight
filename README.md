@@ -12,16 +12,17 @@ npm run build      # build + adapter-cloudflare
 npm run preview
 ```
 
-## Database (D1)
+## Data (KV-only)
+
+Akun ini hanya punya Workers KV, jadi D1/R2 tidak dipakai. Satu binding `KV` untuk semua data JSON (lihat skema key di `functions/api/_db.ts`). Blob foto/PDF tetap di IndexedDB client (mockup).
 
 ```bash
-wrangler d1 create trusight-db
-# isi database_id ke wrangler.toml
-wrangler d1 migrations apply trusight-db --local
-wrangler d1 migrations apply trusight-db --remote
+wrangler kv namespace create KV
+# isi id ke wrangler.toml, lalu:
+wrangler kv bulk put --binding=KV seed/kv-seed.json
 ```
 
-Migrasi: `migrations/001_init.sql` (ERD §8 plan) + `002_seed.sql` (Civic, 911, users demo).
+Batas free tier: 1000 writes/hari (tiap request dihemat: register 2 writes, order 2 writes, payment digabung ke dokumen order), 100rb reads/hari, 1GB. KV eventual-consistent ±60 detik — cukup untuk mockup; pindah ke D1 nanti tanpa ubah frontend (kontrak API sama).
 
 ## Deploy Cloudflare Pages
 
