@@ -23,10 +23,10 @@
   ];
   async function doSubmit() {
     msg = '';
-    if (!photos.length) { msg = 'Mockup: tambah minimal 1 foto lapangan dulu.'; return; }
-    if (!signed) { msg = 'Mockup: bubuhkan TTD digital dulu.'; return; }
+    if (!photos.length) { msg = 'Tambah minimal 1 foto lapangan dulu.'; return; }
+    if (!signed) { msg = 'Bubuhkan TTD digital dulu.'; return; }
     const r = await api.post(`/inspections/${id}/submit`, { score, grade, recommendation: reco, repair_estimate: 2000000, summary: 'Butuh perbaikan ringan' });
-    msg = r.ok ? 'Laporan diterbitkan + garansi 30 hari (mockup).' : r.error.message;
+    msg = r.ok ? 'Laporan diterbitkan + garansi 30 hari.' : r.error.message;
   }
   function submit() {
     requireAuth(() => void doSubmit(), `/inspector/form/${id}`);
@@ -56,8 +56,8 @@
         {/each}
       </div>
       <PhotoUpload onDone={(r) => { photos = [...photos, r.key]; }} />
-      {#if photos.length}<p class="text-xs text-slate-500">{photos.length} foto mockup terlampir.</p>{/if}
-      <SignaturePad onSave={() => { signed = true; msg = 'TTD tersimpan (mockup lokal).'; }} />
+      {#if photos.length}<p class="text-xs text-slate-500">{photos.length} foto terlampir.</p>{/if}
+      <SignaturePad onSave={() => { signed = true; msg = 'TTD tersimpan.'; }} />
     </div>
     <aside class="grid content-start gap-3 lg:sticky lg:top-20">
       <div class="ts-card grid gap-2">

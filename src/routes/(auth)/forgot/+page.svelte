@@ -4,7 +4,7 @@
   let email = '', msg = '';
   async function submit() {
     const r = await api.post('/auth/send', { email });
-    msg = r.ok ? 'Kode terkirim (mockup: 067000). Lanjut ke OTP.' : r.error.message;
+    msg = r.ok ? 'Kode demo 067000 terkirim. Lanjut ke OTP.' : r.error.message;
     if (r.ok) setTimeout(() => (location.href = '/otp'), 800);
   }
 </script>

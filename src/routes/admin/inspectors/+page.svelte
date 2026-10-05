@@ -18,7 +18,7 @@
       <h1 class="text-[24px] font-bold tracking-tight">Certified Inspectors</h1>
       <p class="text-[13px] text-slate-500">Manage verificator licenses, rating performance, and active duty assignments.</p>
     </div>
-    <button class="inline-flex min-h-11 items-center rounded-xl bg-ink-900 px-4 text-sm font-bold text-white" on:click={() => (msg = 'Tambah inspektur (mockup).')}>+ Add New Inspector</button>
+    <button class="inline-flex min-h-11 items-center rounded-xl bg-ink-900 px-4 text-sm font-bold text-white" on:click={() => (msg = 'Tambah inspektur segera hadir.')}>+ Add New Inspector</button>
   </div>
   {#if msg}<p class="text-sm text-emerald-700">{msg}</p>{/if}
   <div class="grid items-start gap-4 lg:grid-cols-3">
@@ -32,7 +32,7 @@
               <td class="px-4 py-3"><span class="mr-2 inline-grid size-8 place-items-center rounded-full bg-ink-900 align-middle text-[11px] font-bold text-white">{d.ini}</span><span class="font-semibold">{d.n}</span></td>
               <td class="px-4 py-3">{d.lic}</td><td class="px-4 py-3">{d.region}</td><td class="px-4 py-3">{d.jobs}</td><td class="px-4 py-3">☆ {d.rating}</td>
               <td class="px-4 py-3"><span class={stPill(d.st)}>{d.st}</span></td>
-              <td class="px-4 py-3"><button class="font-bold text-brand-600" on:click={() => (msg = `Edit ${d.n} (mockup).`)}>Edit</button></td>
+              <td class="px-4 py-3"><button class="font-bold text-brand-600" on:click={() => (msg = `Edit ${d.n} segera hadir.`)}>Edit</button></td>
             </tr>
           {/each}
         </tbody>

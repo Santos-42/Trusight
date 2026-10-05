@@ -76,6 +76,11 @@ export function consumeReturnTo(fallback = '/app/home'): string {
   return v && v.startsWith('/') ? v : fallback;
 }
 
+/** Sesi login saat ini (null bila tamu). */
+export function getSession(): Session | null {
+  return readSession();
+}
+
 /** Home per role. */
 export function roleHome(r: Role): string {
   return r === 'seller' ? '/seller' : r === 'inspector' ? '/inspector' : r === 'admin' ? '/admin' : '/app/home';

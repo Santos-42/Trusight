@@ -13,7 +13,7 @@
     a.href = URL.createObjectURL(blob);
     a.download = `${id}.pdf`;
     a.click();
-    msg = 'PDF mockup terunduh.';
+    msg = 'PDF terunduh.';
   }
   async function share() {
     msg = (await shareOrCopy({ title: 'TruSight Certified', text: 'Lihat laporan verifikasi TruSight:', url: `${location.origin}/app/report/${id}` })) === 'shared' ? 'Dibagikan.' : 'Tautan disalin — tempel ke OLX.';

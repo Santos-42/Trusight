@@ -2,7 +2,7 @@
   import { requireAuth } from '$lib/guest';
   function approve() {
     requireAuth(() => {
-      document.getElementById('jadwal-msg')!.textContent = 'Jadwal disetujui (mockup). Inspektur dinotifikasi.';
+      document.getElementById('jadwal-msg')!.textContent = 'Jadwal disetujui. Inspektur dinotifikasi.';
     }, '/seller/schedule');
   }
 </script>

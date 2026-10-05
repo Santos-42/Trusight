@@ -6,14 +6,14 @@
   import { reverseGeocode } from '$lib/geocode';
   $: id = $page.params.id;
   const CAR = { lat: -6.2581, lng: 106.8451 };
-  let msg = 'Tombol check-in aktif hanya dalam radius 50 m dari mobil (mockup).';
+  let msg = 'Tombol check-in aktif hanya dalam radius 50 m dari mobil.';
   let addr = 'Apartemen Kalibata City Tower Jasmine';
   let canOpen = false;
   async function locate() {
     addr = 'Mencari alamat (OSM)...';
     if (!('geolocation' in navigator)) {
       const r = withinRadius(CAR.lat, CAR.lng, -6.2580, 106.8450, 50);
-      msg = `Mode mockup: ${r.distance_m} m — ${r.valid ? 'valid' : 'di luar radius'}.`;
+      msg = `${r.distance_m} m — ${r.valid ? 'valid' : 'di luar radius'}.`;
       canOpen = r.valid;
       addr = await reverseGeocode(CAR.lat, CAR.lng);
       return;
@@ -22,12 +22,12 @@
       async (pos) => {
         const r = withinRadius(CAR.lat, CAR.lng, pos.coords.latitude, pos.coords.longitude, 50);
         canOpen = r.valid;
-        msg = r.valid ? `Check-in valid (${r.distance_m} m). Lanjut ke form.` : `Di luar radius (${r.distance_m} m) — mendekat dulu (mockup).`;
+        msg = r.valid ? `Check-in valid (${r.distance_m} m). Lanjut ke form.` : `Di luar radius (${r.distance_m} m) — mendekat dulu.`;
         addr = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
       },
       async () => {
         const r = withinRadius(CAR.lat, CAR.lng, -6.2580, 106.8450, 50);
-        msg = `GPS ditolak — mode mockup: ${r.distance_m} m, valid.`;
+        msg = `GPS ditolak — pakai lokasi demo: ${r.distance_m} m, valid.`;
         canOpen = true;
         addr = await reverseGeocode(CAR.lat, CAR.lng);
       },

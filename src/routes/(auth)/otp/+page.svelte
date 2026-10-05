@@ -21,7 +21,7 @@
   }
   async function resend() {
     await api.post('/auth/send', {});
-    err = 'Kode terkirim ulang (mockup: 067000).';
+    err = 'Kode demo 067000 terkirim ulang.';
   }
 </script>
 <svelte:head><title>OTP — TruSight</title></svelte:head>

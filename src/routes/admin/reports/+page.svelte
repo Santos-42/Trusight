@@ -33,7 +33,7 @@
             <td class="px-4 py-3 font-semibold">{r.id}</td><td class="px-4 py-3">{r.car}</td><td class="px-4 py-3">{r.insp}</td>
             <td class="px-4 py-3 font-bold {r.sc}">{r.score}</td>
             <td class="px-4 py-3"><span class={stPill(r.st)}>{r.st}</span></td><td class="px-4 py-3">{r.date}</td>
-            <td class="px-4 py-3"><button class="font-bold text-brand-600" on:click={() => (msg = `${r.act} ${r.id} (mockup).`)}>{r.act}</button></td>
+            <td class="px-4 py-3"><button class="font-bold text-brand-600" on:click={() => (msg = `${r.act} ${r.id} segera hadir.`)}>{r.act}</button></td>
           </tr>
         {/each}
       </tbody>

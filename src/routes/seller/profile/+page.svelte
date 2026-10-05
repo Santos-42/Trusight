@@ -1,5 +1,10 @@
 <script lang="ts">
-  import { Building2, ChevronLeft, ChevronRight, Landmark, ScrollText, Star } from '@lucide/svelte';
+  import { Building2, ChevronLeft, ChevronRight, Landmark, LogOut, ScrollText, Star } from '@lucide/svelte';
+  import { clearSession } from '$lib/guest';
+  function logout() {
+    clearSession();
+    location.href = '/';
+  }
   const rows = [
     { icon: Building2, label: 'Informasi Kontak & Showroom' },
     { icon: Landmark, label: 'Rekening Bank & Penarikan' },
@@ -27,4 +32,5 @@
       </button>
     {/each}
   </div>
+  <button class="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-red-600 px-6 text-sm font-bold text-white hover:bg-red-700" on:click={logout}><LogOut class="size-4" /> Logout</button>
 </div>
