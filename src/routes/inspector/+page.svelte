@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Clock, MapPin, Star } from '@lucide/svelte';
+  import { CircleUserRound, Clock, MapPin, Star } from '@lucide/svelte';
   const jobs = [
     { id: 'insp-1', title: 'Honda Civic Turbo 2021', time: '14:00 - 15:30 WIB', loc: 'Kalibata, Jakarta Selatan (3.2 km)' },
     { id: 'insp-2', title: 'Toyota Avanza Veloz 2022', time: '16:00 - 17:30 WIB', loc: 'Tebet, Jakarta Selatan (5.1 km)' }
@@ -10,7 +10,7 @@
   <div class="flex items-start justify-between sm:col-span-full">
     <div>
       <p class="text-sm text-slate-500">Selamat Tugas,</p>
-      <h1 class="text-[26px] font-bold leading-tight tracking-tight">Budi Santoso (ID #1294)</h1>
+      <h1 class="flex items-center gap-3 text-[26px] font-bold leading-tight tracking-tight"><CircleUserRound class="size-12 shrink-0 text-slate-300" /> Budi Santoso (ID #1294)</h1>
     </div>
     <span class="pill-navy"><Star class="size-4 fill-gold-400 text-gold-400" /> 4.9 (Pro)</span>
   </div>

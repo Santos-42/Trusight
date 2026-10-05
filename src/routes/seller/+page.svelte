@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { BellRing } from '@lucide/svelte';
+  import { BellRing, CircleUserRound } from '@lucide/svelte';
   import { shareOrCopy } from '$lib/share';
   let msg = '';
 </script>
@@ -7,7 +7,7 @@
 <div class="grid gap-4">
   <div>
     <p class="text-sm text-slate-500">Dashboard Penjual,</p>
-    <h1 class="text-[26px] font-bold tracking-tight">Hendra Wijaya</h1>
+    <h1 class="flex items-center gap-3 text-[26px] font-bold tracking-tight"><CircleUserRound class="size-12 shrink-0 text-slate-300" /> Hendra Wijaya</h1>
   </div>
   <div class="grid items-start gap-4 lg:grid-cols-2">
     <div class="grid content-start gap-4">

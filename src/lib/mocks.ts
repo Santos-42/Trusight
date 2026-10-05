@@ -10,6 +10,7 @@ export const mockVehicles = [
     score: null,
     grade: null,
     recommendation: null,
+    cover: '/vehicles/civic-2021/hero.jpg',
     coverR2: null
   },
   {
@@ -23,6 +24,7 @@ export const mockVehicles = [
     score: 94,
     grade: 'A',
     recommendation: 'beli',
+    cover: '/vehicles/porsche-911-2022/hero.jpg',
     coverR2: null
   },
   {
@@ -36,6 +38,7 @@ export const mockVehicles = [
     score: 82,
     grade: 'B+',
     recommendation: 'nego',
+    cover: '/vehicles/avanza-2022/hero.jpg',
     coverR2: null
   }
 ];

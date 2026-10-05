@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Car, ClipboardCheck, Check, ShieldCheck, Award, ChevronLeft, ChevronRight } from '@lucide/svelte';
+  import { ChevronLeft, ChevronRight } from '@lucide/svelte';
   let i = 0;
   const N = 2;
   function go(n: number) {
@@ -34,27 +34,7 @@
     <div class="flex w-full items-center justify-between gap-2">
       <button class="ts-back shrink-0" on:click={prev} aria-label="Slide sebelumnya"><ChevronLeft class="size-5" /></button>
       <div class="relative flex items-end justify-center gap-2">
-        {#if i === 0}
-          <span class="grid size-28 place-items-center rounded-3xl bg-ink-900 text-white lg:size-20"><Car class="size-14 lg:size-10" /></span>
-          <span class="grid w-24 place-items-center rounded-3xl bg-white p-3 shadow-sm lg:w-20 lg:p-2">
-            <ClipboardCheck class="size-8 text-brand-600 lg:size-6" />
-            <span class="mt-1 grid gap-1">
-              <span class="flex items-center gap-1"><Check class="size-3.5 text-[#1e9e5a]" /><span class="h-1 w-10 rounded bg-slate-200"></span></span>
-              <span class="flex items-center gap-1"><Check class="size-3.5 text-[#1e9e5a]" /><span class="h-1 w-10 rounded bg-slate-200"></span></span>
-              <span class="h-1 w-12 rounded bg-slate-200"></span>
-            </span>
-          </span>
-        {:else}
-          <span class="grid size-28 place-items-center rounded-3xl bg-ink-900 text-white lg:size-20"><ShieldCheck class="size-14 lg:size-10" /></span>
-          <span class="grid w-24 place-items-center rounded-3xl bg-white p-3 shadow-sm lg:w-20 lg:p-2">
-            <Award class="size-8 text-brand-600 lg:size-6" />
-            <span class="mt-1 grid gap-1">
-              <span class="flex items-center gap-1"><Check class="size-3.5 text-[#1e9e5a]" /><span class="h-1 w-10 rounded bg-slate-200"></span></span>
-              <span class="flex items-center gap-1"><Check class="size-3.5 text-[#1e9e5a]" /><span class="h-1 w-10 rounded bg-slate-200"></span></span>
-              <span class="h-1 w-12 rounded bg-slate-200"></span>
-            </span>
-          </span>
-        {/if}
+        <img src="/hero-inspection.jpg" alt="Ilustrasi inspeksi mobil TruSight" class="size-36 rounded-[28px] object-cover shadow-[0_12px_40px_rgba(28,35,43,0.28)] ring-1 ring-ink-900/10 lg:size-40" />
       </div>
       <button class="ts-back shrink-0" on:click={next} aria-label="Slide berikutnya"><ChevronRight class="size-5" /></button>
     </div>

@@ -19,8 +19,13 @@
   </div>
 
   <div class="grid gap-4 lg:col-span-2">
-    <div class="relative grid place-items-center overflow-hidden rounded-[20px] bg-[#14181e] py-10 text-white">
-      <Car class="size-40 opacity-95" />
+    <div class="relative h-60 overflow-hidden rounded-[20px] bg-[#14181e] text-white lg:h-72">
+      {#if v.cover}
+        <img src={v.cover} alt={v.title} class="h-full w-full object-cover" />
+        <span class="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent"></span>
+      {:else}
+        <span class="grid h-full place-items-center"><Car class="size-40 opacity-95" /></span>
+      {/if}
       <span class="pill-hero absolute bottom-4 left-4"><BadgeCheck class="size-4 text-brand-600" /> TRUSIGHT VERIFIED</span>
       <span class="absolute bottom-4 right-6 flex gap-1.5"><span class="h-1.5 w-5 rounded-full bg-brand-500"></span><span class="size-1.5 rounded-full bg-white/40"></span><span class="size-1.5 rounded-full bg-white/40"></span></span>
     </div>

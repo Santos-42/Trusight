@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  import { ChevronLeft, CreditCard, QrCode, Landmark, Lock, BadgeCheck, Car } from '@lucide/svelte';
+  import { ChevronLeft, CreditCard, QrCode, Landmark, Lock, BadgeCheck } from '@lucide/svelte';
   import { api } from '$lib/api';
   import { requireAuth } from '$lib/guest';
   $: orderId = $page.params.orderId;
@@ -34,7 +34,7 @@
       </div>
       <div class="ts-card">
         <div class="flex gap-4">
-          <span class="grid size-20 shrink-0 place-items-center rounded-2xl bg-ink-900 text-white"><Car class="size-10" /></span>
+          <span class="grid size-20 shrink-0 place-items-center overflow-hidden rounded-2xl bg-ink-900 text-white"><img src="/vehicles/porsche-911-2022/hero.jpg" alt="Porsche 911 Carrera S 2022" class="h-full w-full object-cover" /></span>
           <div class="flex flex-1 items-start justify-between gap-2">
             <div>
               <p class="font-bold">Fast Track Inspection</p>
