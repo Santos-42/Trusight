@@ -6,15 +6,15 @@
   ];
 </script>
 <svelte:head><title>Inspector — TruSight</title></svelte:head>
-<div class="mx-auto grid max-w-xl gap-4">
-  <div class="flex items-start justify-between">
+<div class="grid gap-4 sm:grid-cols-[repeat(auto-fill,minmax(300px,1fr))]">
+  <div class="flex items-start justify-between sm:col-span-full">
     <div>
       <p class="text-sm text-slate-500">Selamat Tugas,</p>
       <h1 class="text-[26px] font-bold leading-tight tracking-tight">Budi Santoso (ID #1294)</h1>
     </div>
     <span class="pill-navy"><Star class="size-4 fill-gold-400 text-gold-400" /> 4.9 (Pro)</span>
   </div>
-  <h2 class="text-lg font-bold">Tugas Inspeksi Hari Ini (2)</h2>
+  <h2 class="text-lg font-bold sm:col-span-full">Tugas Inspeksi Hari Ini (2)</h2>
   {#each jobs as j}
     <div class="ts-card grid gap-2">
       <div class="flex items-start justify-between gap-2">

@@ -36,7 +36,7 @@
   }
 </script>
 <svelte:head><title>Tugas {id} — Inspector</title></svelte:head>
-<div class="mx-auto grid max-w-4xl gap-4">
+<div class="grid gap-4">
   <div class="ts-appbar-flush">
     <a href="/inspector" class="ts-back" aria-label="Kembali"><ChevronLeft class="size-5" /></a>
     <p class="ts-appbar-title">Detail Tugas Inspeksi</p>

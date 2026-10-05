@@ -4,8 +4,8 @@
 
 <!-- Mobile: invisible wrapper (halaman mockup tampil apa adanya).
      Desktop (lg): kartu split-screen — panel brand kiri + form kanan. -->
-<div class="contents lg:mx-auto lg:grid lg:w-full lg:max-w-5xl lg:grid-cols-[1fr_1.1fr] lg:overflow-hidden lg:rounded-[28px] lg:bg-white lg:shadow-2xl">
-  <aside class="relative hidden flex-col justify-between overflow-hidden bg-ink-900 p-10 text-white lg:flex">
+<div class="flex flex-1 flex-col lg:grid lg:h-full lg:min-h-0 lg:grid-cols-[1fr_1.1fr] lg:bg-white">
+  <aside class="relative hidden flex-col justify-between overflow-hidden bg-ink-900 p-10 text-white lg:flex lg:min-h-0 xl:p-14">
     <div class="pointer-events-none absolute -right-20 -top-20 size-72 rounded-full bg-brand-600/25"></div>
     <div class="pointer-events-none absolute -bottom-24 -left-16 size-72 rounded-full bg-brand-600/15"></div>
     <div class="relative flex items-center gap-3">
@@ -29,7 +29,7 @@
       <div><p class="text-xl font-extrabold">94</p><p class="text-[11px] text-white/55">Skor rata-rata</p></div>
     </div>
   </aside>
-  <div class="contents lg:flex lg:items-center lg:justify-center lg:p-8 xl:p-10">
-    <div class="w-full lg:max-w-md"><slot /></div>
+  <div class="flex flex-1 flex-col lg:min-h-0 lg:items-center lg:justify-center lg:p-6 xl:p-10">
+    <div class="flex w-full flex-1 flex-col lg:block lg:max-w-md lg:flex-none"><slot /></div>
   </div>
 </div>

@@ -2,6 +2,7 @@
   import { page } from '$app/stores';
   import { X, Wrench, Car, Armchair } from '@lucide/svelte';
   import { api } from '$lib/api';
+  import { requireAuth } from '$lib/guest';
   import PhotoUpload from '$lib/components/inspector/PhotoUpload.svelte';
   import SignaturePad from '$lib/components/inspector/SignaturePad.svelte';
   $: id = $page.params.id;
@@ -20,16 +21,19 @@
     { label: 'Tegangan Aki Kendaraan', st: 'Normal' },
     { label: 'Kondisi Kampas Rem', st: 'Aus' }
   ];
-  async function submit() {
+  async function doSubmit() {
     msg = '';
     if (!photos.length) { msg = 'Mockup: tambah minimal 1 foto lapangan dulu.'; return; }
     if (!signed) { msg = 'Mockup: bubuhkan TTD digital dulu.'; return; }
     const r = await api.post(`/inspections/${id}/submit`, { score, grade, recommendation: reco, repair_estimate: 2000000, summary: 'Butuh perbaikan ringan' });
     msg = r.ok ? 'Laporan diterbitkan + garansi 30 hari (mockup).' : r.error.message;
   }
+  function submit() {
+    requireAuth(() => void doSubmit(), `/inspector/form/${id}`);
+  }
 </script>
 <svelte:head><title>Form {id} — Inspector</title></svelte:head>
-<div class="mx-auto grid max-w-4xl gap-4">
+<div class="grid gap-4">
   <div class="ts-appbar-flush">
     <a href="/inspector" class="ts-back" aria-label="Tutup"><X class="size-5" /></a>
     <p class="ts-appbar-title">Formulir Inspeksi Klinis</p>

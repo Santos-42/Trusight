@@ -4,7 +4,7 @@
   import ScoreRing from '$lib/components/vehicle/ScoreRing.svelte';
   import { buildReportPdf } from '$lib/reportPdf';
   import { shareOrCopy } from '$lib/share';
-  $: id = $page.params.id;
+  $: id = $page.params.id ?? 'REP-3401';
   let msg = '';
   async function downloadPdf() {
     msg = 'Membuat PDF (pdf-lib, OSS)...';
@@ -20,7 +20,7 @@
   }
 </script>
 <svelte:head><title>Report {id} — TruSight</title></svelte:head>
-<div class="mx-auto grid max-w-5xl gap-5 pb-8">
+<div class="grid gap-5 pb-8">
   <div class="ts-appbar-flush">
     <a href="/app/history" class="ts-back" aria-label="Kembali"><ChevronLeft class="size-5" /></a>
     <p class="ts-appbar-title flex-1">Verification Report</p>

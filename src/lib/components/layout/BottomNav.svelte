@@ -1,9 +1,10 @@
 <script lang="ts">
   import { House, Plus, Mail, FileText, User, CalendarDays, Car, ClipboardCheck, LayoutDashboard, MessageSquare } from '@lucide/svelte';
   import { page } from '$app/stores';
+  import type { Component } from 'svelte';
   export let role: 'buyer' | 'seller' | 'inspector' | 'admin' = 'buyer';
   $: path = $page.url.pathname;
-  const sets: Record<string, { href: string; label: string; icon: unknown }[]> = {
+  const sets: Record<string, { href: string; label: string; icon: Component<any> }[]> = {
     buyer: [
       { href: '/app/settings', label: 'Profile', icon: User },
       { href: '/app/home', label: 'Home', icon: House },

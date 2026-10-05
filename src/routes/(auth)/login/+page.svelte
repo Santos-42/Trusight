@@ -1,13 +1,21 @@
 <script lang="ts">
   import { ChevronLeft, Eye, Apple } from '@lucide/svelte';
+  import { onMount } from 'svelte';
+  import { page } from '$app/stores';
   import { api } from '$lib/api';
+  import { setSession, consumeReturnTo } from '$lib/guest';
+  $: rt = $page.url.searchParams.get('returnTo') ?? '';
+  onMount(() => {
+    if (rt.startsWith('/')) sessionStorage.setItem('trusight_return_to', rt);
+  });
   let email = '', password = '', err = '', loading = false, show = false;
   async function submit() {
     loading = true; err = '';
     const r = await api.post('/auth/login', { email, password });
     loading = false;
     if (!r.ok) { err = r.error.message; return; }
-    location.href = '/app/home';
+    setSession(email);
+    location.href = consumeReturnTo();
   }
 </script>
 <svelte:head><title>Login — TruSight</title></svelte:head>
@@ -30,5 +38,5 @@
       <button type="button" class="grid min-h-[52px] place-items-center rounded-2xl border border-slate-200 bg-white text-ink-900" aria-label="Apple"><Apple class="size-6" /></button>
     </div>
   </form>
-  <p class="mt-16 text-center text-sm">Don't have an account? <a href="/register" class="link-blue">Register Now</a></p>
+  <p class="mt-16 text-center text-sm">Don't have an account? <a href="/register{rt ? `?returnTo=${encodeURIComponent(rt)}` : ''}" class="link-blue">Register Now</a></p>
 </div>

@@ -1,10 +1,11 @@
 <script lang="ts">
   export let role: 'buyer' | 'seller' | 'inspector' | 'admin' = 'buyer';
   import { page } from '$app/stores';
+  import type { Component } from 'svelte';
   import { LayoutDashboard, FileText, Users, ClipboardCheck, Settings, House, Search, Plus, Mail, Car, CalendarDays, Award, MessageSquare } from '@lucide/svelte';
   $: path = $page.url.pathname;
 
-  const menus: Record<string, { href: string; label: string; icon: unknown }[]> = {
+  const menus: Record<string, { href: string; label: string; icon: Component<any> }[]> = {
     buyer: [
       { href: '/app/home', label: 'Home', icon: House },
       { href: '/app/search', label: 'Cari Mobil', icon: Search },

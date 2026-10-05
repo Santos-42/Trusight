@@ -2,6 +2,7 @@
   import { page } from '$app/stores';
   import { ChevronLeft, CreditCard, QrCode, Landmark, Lock, BadgeCheck, Car } from '@lucide/svelte';
   import { api } from '$lib/api';
+  import { requireAuth } from '$lib/guest';
   $: orderId = $page.params.orderId;
   let method: 'CARD' | 'QRIS' | 'TRANSFER' = 'CARD', msg = '';
   const methods = [
@@ -9,15 +10,18 @@
     { id: 'QRIS', icon: QrCode },
     { id: 'TRANSFER', icon: Landmark }
   ] as const;
-  async function pay() {
+  async function doPay() {
     msg = '';
     const r = await api.post<{ redirectUrl: string }>(`/orders/${orderId}/pay`, { method });
     if (!r.ok) { msg = r.error.message; return; }
     location.href = `/app/success/${orderId}`;
   }
+  function pay() {
+    requireAuth(() => void doPay(), `/app/checkout/${orderId}`);
+  }
 </script>
 <svelte:head><title>Checkout — TruSight</title></svelte:head>
-<div class="mx-auto grid max-w-4xl gap-5 pb-8">
+<div class="grid gap-5 pb-8">
   <div class="ts-appbar-flush">
     <a href="/app/home" class="ts-back" aria-label="Kembali"><ChevronLeft class="size-5" /></a>
     <p class="ts-appbar-title">Checkout</p>

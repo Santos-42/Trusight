@@ -8,7 +8,7 @@
   }
 </script>
 <svelte:head><title>Sertifikasi — Seller</title></svelte:head>
-<div class="grid gap-3 max-w-xl">
+<div class="grid gap-3">
   <h1 class="text-xl font-extrabold">Sertifikasi Anda Siap! • Grade A</h1>
   <div class="rounded-2xl border bg-white p-5 text-sm">
     <p>TruSight Certified • Honda Civic Turbo 2021 (mockup)</p>

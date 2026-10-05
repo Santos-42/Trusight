@@ -4,7 +4,7 @@
   let msg = '';
 </script>
 <svelte:head><title>Seller — TruSight</title></svelte:head>
-<div class="mx-auto grid max-w-4xl gap-4">
+<div class="grid gap-4">
   <div>
     <p class="text-sm text-slate-500">Dashboard Penjual,</p>
     <h1 class="text-[26px] font-bold tracking-tight">Hendra Wijaya</h1>

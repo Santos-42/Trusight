@@ -1,10 +1,15 @@
 <script lang="ts">
   import { page } from '$app/stores';
+  import { goto } from '$app/navigation';
+  import { requireAuth } from '$lib/guest';
   import { ChevronLeft, BadgeCheck, Car, Fuel, MapPin, CheckCircle2, Cog } from '@lucide/svelte';
   import { mockVehicles } from '$lib/mocks';
   import { rupiah, km } from '$lib/format';
   $: id = $page.params.id;
   $: v = mockVehicles.find(x => x.id === id) ?? mockVehicles[0];
+  function order() {
+    requireAuth(() => goto('/app/new-inspection'), `/app/vehicle/${id}`);
+  }
 </script>
 <svelte:head><title>{v.title} — TruSight</title></svelte:head>
 <div class="grid gap-4 pb-24 lg:grid-cols-3 lg:pb-10">
@@ -40,7 +45,7 @@
       <p class="flex items-center gap-2 font-bold"><CheckCircle2 class="size-5" /> VERIFICATION PASSED</p>
       <p class="mt-1 text-[13px] text-white/85">150 Point Inspection Passed by TruSight Certified Verifier.</p>
     </div>
-    <a href="/app/new-inspection" class="btn-navy hidden w-full lg:inline-flex">ORDER VERIFICATION</a>
+    <button class="btn-navy hidden w-full lg:inline-flex" on:click={order}>ORDER VERIFICATION</button>
   </div>
 </div>
-<a href="/app/new-inspection" class="fixed bottom-24 left-1/2 z-40 inline-flex min-h-[56px] w-[min(92%,28rem)] -translate-x-1/2 items-center justify-center gap-2 rounded-full bg-brand-600 text-sm font-bold tracking-widest text-white shadow-xl lg:hidden">ORDER VERIFICATION</a>
+<button class="fixed bottom-24 left-1/2 z-40 inline-flex min-h-[56px] w-[min(92%,28rem)] -translate-x-1/2 items-center justify-center gap-2 rounded-full bg-brand-600 text-sm font-bold tracking-widest text-white shadow-xl lg:hidden" on:click={order}>ORDER VERIFICATION</button>

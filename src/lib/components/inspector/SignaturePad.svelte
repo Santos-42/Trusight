@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   export let onSave: (pngBlob: Blob) => void = () => {};
   let canvas: HTMLCanvasElement;
-  let pad: { clear(): void; isEmpty(): boolean; toDataURL(t: string): string } | null = null;
+  let pad: { clear(): void; isEmpty(): boolean; toDataURL(t: string): string; addEventListener?: (ev: string, cb: () => void) => void } | null = null;
   let empty = true;
 
   onMount(async () => {

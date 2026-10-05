@@ -1,15 +1,19 @@
 <script lang="ts">
   import { page } from '$app/stores';
   import { shareOrCopy } from '$lib/share';
+  import { requireAuth } from '$lib/guest';
   $: orderId = $page.params.orderId;
   let reason = 'Mesin bunyi tidak seperti di laporan';
   let msg = '';
-  function claim() {
+  function doClaim() {
     msg = `Klaim garansi ${orderId} tercatat (mockup): "${reason}". Admin akan menghubungi ≤1×24 jam.`;
+  }
+  function claim() {
+    requireAuth(() => doClaim(), `/app/warranty/${orderId}`);
   }
 </script>
 <svelte:head><title>Garansi {orderId} — TruSight</title></svelte:head>
-<div class="mx-auto max-w-xl grid gap-3">
+<div class="grid gap-3">
   <h1 class="text-xl font-extrabold">Garansi & Komplain • {orderId}</h1>
   <div class="rounded-2xl border bg-white p-5 text-sm grid gap-2">
     <p>Garansi laporan 30 hari • mencakup kesalahan inspeksi mayor (mockup, tanpa syarat tersembunyi).</p>

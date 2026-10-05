@@ -3,7 +3,7 @@
   $: orderId = $page.params.orderId;
 </script>
 <svelte:head><title>Live Tracking — TruSight</title></svelte:head>
-<div class="mx-auto grid max-w-4xl gap-4 lg:grid-cols-2">
+<div class="grid gap-4 lg:grid-cols-2">
   <h1 class="text-xl font-extrabold lg:col-span-2">LIVE VERIFICATION • {orderId}</h1>
   <div class="rounded-2xl border bg-white p-5">
     <p class="font-bold text-sm">Firman Comstir • SENIOR TECHNICAL AUDITOR • 4.9 (242)</p>

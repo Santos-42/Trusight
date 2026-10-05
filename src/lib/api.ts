@@ -1,20 +1,45 @@
 import { API_BASE } from './config';
+import { mockHandle } from './mockApi';
 
 export type ApiOk<T> = { ok: true; data: T };
 export type ApiErr = { ok: false; error: { code: string; message: string } };
 export type ApiRes<T> = ApiOk<T> | ApiErr;
 
 async function req<T>(path: string, init?: RequestInit): Promise<ApiRes<T>> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: { 'content-type': 'application/json' },
-    credentials: 'include',
-    ...init
-  });
+  let res: Response | null = null;
   try {
-    return (await res.json()) as ApiRes<T>;
+    res = await fetch(`${API_BASE}${path}`, {
+      headers: { 'content-type': 'application/json' },
+      credentials: 'include',
+      ...init
+    });
+    if (res.ok) {
+      try {
+        return (await res.json()) as ApiRes<T>;
+      } catch {
+        /* jatuh ke fallback DEV di bawah */
+      }
+    } else if (!import.meta.env.DEV) {
+      try {
+        return (await res.json()) as ApiRes<T>;
+      } catch {
+        return { ok: false, error: { code: 'UPSTREAM_ERROR', message: `HTTP ${res.status}` } };
+      }
+    }
   } catch {
-    return { ok: false, error: { code: 'UPSTREAM_ERROR', message: `HTTP ${res.status}` } };
+    /* offline / functions tidak jalan (vite dev) -> fallback DEV di bawah */
   }
+  // DEV saja: functions/ tidak hidup di `npm run dev`, jawab dengan mock lokal.
+  if (import.meta.env.DEV) {
+    let body: Record<string, unknown> = {};
+    try {
+      body = init?.body ? (JSON.parse(init.body as string) as Record<string, unknown>) : {};
+    } catch {
+      body = {};
+    }
+    return mockHandle(path, init?.method ?? 'GET', body) as ApiRes<T>;
+  }
+  return { ok: false, error: { code: 'UPSTREAM_ERROR', message: `HTTP ${res?.status ?? 'OFFLINE'}` } };
 }
 
 export const api = {

@@ -1,18 +1,22 @@
 <script lang="ts">
   import { ChevronLeft } from '@lucide/svelte';
   import { api } from '$lib/api';
+  import { requireAuth } from '$lib/guest';
   import { PRICING } from '$lib/config';
   import { rupiah } from '$lib/format';
   let vehicleId = 'civic-2021', type: 'standard' | 'fast-track' = 'fast-track', err = '', ok = '';
-  async function submit() {
+  async function doSubmit() {
     err = ''; ok = '';
     const r = await api.post<{ orderId: string; total: number }>('/orders', { vehicleId, type });
     if (!r.ok) { err = r.error.message; return; }
     ok = `Order ${r.data.orderId} dibuat (${rupiah(r.data.total)}). Lanjut ke checkout.`;
   }
+  function submit() {
+    requireAuth(() => void doSubmit(), '/app/new-inspection');
+  }
 </script>
 <svelte:head><title>Inspeksi Baru — TruSight</title></svelte:head>
-<div class="mx-auto grid max-w-4xl gap-4">
+<div class="grid gap-4">
   <div class="ts-appbar-flush">
     <a href="/app/home" class="ts-back" aria-label="Kembali"><ChevronLeft class="size-5" /></a>
   </div>

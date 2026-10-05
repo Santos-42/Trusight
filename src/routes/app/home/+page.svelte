@@ -36,7 +36,7 @@
     </div>
     <a href="/app/search" class="ts-back" aria-label="Filter"><SlidersHorizontal class="size-5" /></a>
   </div>
-  <div class="grid grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+  <div class="grid grid gap-4 sm:grid-cols-[repeat(auto-fill,minmax(250px,1fr))]">
     {#each mockVehicles as v}<VehicleCard {v} />{/each}
   </div>
 </div>
