@@ -6,6 +6,11 @@ const RETURN_KEY = 'trusight_return_to';
 
 /** True jika user sudah login (mockup: token di localStorage). */
 export const authed = writable<boolean>(false);
+/** Role user login. Tamu = buyer (menu buyer + tombol Masuk). */
+export type Role = 'buyer' | 'seller' | 'inspector' | 'admin';
+export const role = writable<Role>('buyer');
+type Session = { name: string; email: string; role: Role; at: number };
+const VALID_ROLES: Role[] = ['buyer', 'seller', 'inspector', 'admin'];
 /** State global modal penawaran login. */
 export const loginModal = writable<{ open: boolean }>({ open: false });
 
@@ -15,19 +20,39 @@ export function isLoggedIn(): boolean {
 }
 
 export function syncSession() {
-  authed.set(isLoggedIn());
+  const s = readSession();
+  authed.set(!!s);
+  role.set(s?.role ?? 'buyer');
 }
 
-export function setSession(name: string) {
+function readSession(): Session | null {
+  if (!browser) return null;
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw) as Partial<Session>;
+    if (!s.email) return null;
+    const r = (s.role ?? 'buyer') as Role;
+    return { name: s.name ?? s.email, email: s.email, role: VALID_ROLES.includes(r) ? r : 'buyer', at: s.at ?? Date.now() };
+  } catch {
+    return null;
+  }
+}
+
+export function setSession(user: { name?: string; email: string; role?: string }) {
   if (!browser) return;
-  localStorage.setItem(KEY, JSON.stringify({ name, at: Date.now() }));
+  const r = (user.role ?? 'buyer') as Role;
+  const s: Session = { name: user.name ?? user.email, email: user.email, role: VALID_ROLES.includes(r) ? r : 'buyer', at: Date.now() };
+  localStorage.setItem(KEY, JSON.stringify(s));
   authed.set(true);
+  role.set(s.role);
 }
 
 export function clearSession() {
   if (!browser) return;
   localStorage.removeItem(KEY);
   authed.set(false);
+  role.set('buyer');
 }
 
 /**
@@ -49,4 +74,37 @@ export function consumeReturnTo(fallback = '/app/home'): string {
   const v = sessionStorage.getItem(RETURN_KEY);
   sessionStorage.removeItem(RETURN_KEY);
   return v && v.startsWith('/') ? v : fallback;
+}
+
+/** Home per role. */
+export function roleHome(r: Role): string {
+  return r === 'seller' ? '/seller' : r === 'inspector' ? '/inspector' : r === 'admin' ? '/admin' : '/app/home';
+}
+
+/** Apakah path boleh dibuka role ini? Admin boleh semua; auth/landing boleh semua. */
+export function pathAllowedForRole(path: string, r: Role): boolean {
+  if (r === 'admin') return true;
+  if (path === '/' || path.startsWith('/login') || path.startsWith('/register') || path.startsWith('/forgot') || path.startsWith('/otp') || path.startsWith('/reset') || path.startsWith('/request-account')) return true;
+  if (r === 'seller') return path.startsWith('/seller');
+  if (r === 'inspector') return path.startsWith('/inspector');
+  return path.startsWith('/app') || path.startsWith('/login');
+}
+
+/** Tujuan post-login: returnTo hanya dipakai bila rolenya boleh; selebihnya "halaman role menang". */
+export function resolvePostLogin(returnTo: string, r: Role): string {
+  if (returnTo && pathAllowedForRole(returnTo, r)) return returnTo;
+  return roleHome(r);
+}
+
+/** Guard untuk layout role. Admin lolos semua. Kembalikan true bila boleh render. */
+export function checkRole(allowed: Role[], path: string): boolean {
+  if (!browser) return false;
+  const s = readSession();
+  if (!s) {
+    location.href = `/login?returnTo=${encodeURIComponent(path)}`;
+    return false;
+  }
+  if (allowed.includes(s.role) || s.role === 'admin') return true;
+  location.href = roleHome(s.role);
+  return false;
 }

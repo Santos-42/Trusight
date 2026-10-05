@@ -13,10 +13,28 @@ describe('mockApi (fallback vite dev)', () => {
     expect(r.ok).toBe(false);
   });
 
+  it('login memetakan role per email demo', () => {
+    const s = mockHandle('/auth/login', 'POST', { email: 'hendra@showroom.id', password: 'x' });
+    expect(s.ok).toBe(true);
+    if (s.ok) {
+      const u = (s.data as { user: { name: string; role: string } }).user;
+      expect(u.role).toBe('seller');
+      expect(u.name).toBe('Hendra Wijaya');
+    }
+    const a = mockHandle('/auth/login', 'POST', { email: 'admin@trusight.id', password: 'x' });
+    if (a.ok) expect((a.data as { user: { role: string } }).user.role).toBe('admin');
+  });
+
   it('register tolak password < 8 char', () => {
     const r = mockHandle('/auth/register', 'POST', { name: 'X', email: 'x@y.id', password: '123' });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('register sukses selalu buyer', () => {
+    const r = mockHandle('/auth/register', 'POST', { name: 'Y', email: 'y@z.id', password: 'demo1234' });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect((r.data as { user: { role: string } }).user.role).toBe('buyer');
   });
 
   it('buat order fast-track total 499000', () => {

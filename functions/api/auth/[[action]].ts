@@ -16,19 +16,19 @@ export async function onRequestPost({ request, env }: { request: Request; env: E
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
 
     if (action === 'register') {
-      const { name, email, password, role } = body as Record<string, string>;
+      const { name, email, password } = body as Record<string, string>;
       if (!name || !email || !password) return err('VALIDATION_ERROR', 'Nama, email, password wajib diisi');
       if (String(password).length < 8) return err('VALIDATION_ERROR', 'Password minimal 8 karakter');
-      // MVP: tanpa DB (fallback mock) agar preview hijau; DB aktif setelah bindings dipasang
-      if (!env.DB) return ok({ user: { id: 'u-mock', name, email, role: role ?? 'buyer', trust_score: 0 } });
+      // Register selalu buyer (inspektur via request-account, admin tak bisa daftar).
+      if (!env.DB) return ok({ user: { id: 'u-mock', name, email, role: 'buyer', trust_score: 0 } });
       try {
         const id = uid('U');
         await env.DB.prepare(
           'INSERT INTO users (id, role, name, email, password_hash) VALUES (?,?,?,?,?)'
         )
-          .bind(id, role ?? 'buyer', name, email, `hash:${password}`)
+          .bind(id, 'buyer', name, email, `hash:${password}`)
           .run();
-        return ok({ user: { id, name, email, role: role ?? 'buyer', trust_score: 0 } });
+        return ok({ user: { id, name, email, role: 'buyer', trust_score: 0 } });
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : '';
         if (msg.includes('UNIQUE')) return err('CONFLICT', 'Email sudah terdaftar', 409);
@@ -39,7 +39,18 @@ export async function onRequestPost({ request, env }: { request: Request; env: E
     if (action === 'login') {
       const { email, password } = body as Record<string, string>;
       if (!email || !password) return err('VALIDATION_ERROR', 'Email dan password wajib diisi');
-      if (!env.DB) return ok({ user: { id: 'u-mock', name: 'Budi Perkasa', email, role: 'buyer', trust_score: 98 } });
+      // Tanpa DB: role dipetakan dari email demo (mirror mockApi.ts).
+      if (!env.DB) {
+        const known: Record<string, { name: string; role: string }> = {
+          'budi@mail.com': { name: 'Budi Perkasa', role: 'buyer' },
+          'hendra@showroom.id': { name: 'Hendra Wijaya', role: 'seller' },
+          'budi.s@trusight.id': { name: 'Budi Santoso', role: 'inspector' },
+          'firman@trusight.id': { name: 'Firman Comstir', role: 'inspector' },
+          'admin@trusight.id': { name: 'Admin TruSight', role: 'admin' }
+        };
+        const k = known[String(email).toLowerCase()];
+        return ok({ user: { id: 'u-mock', name: k?.name ?? 'Budi Perkasa', email, role: k?.role ?? 'buyer', trust_score: 98 } });
+      }
       const row = await env.DB.prepare('SELECT id, name, email, role, trust_score FROM users WHERE email=?')
         .bind(email)
         .first();

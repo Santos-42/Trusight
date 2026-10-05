@@ -3,7 +3,7 @@
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
   import { api } from '$lib/api';
-  import { setSession, consumeReturnTo } from '$lib/guest';
+  import { setSession, consumeReturnTo, resolvePostLogin } from '$lib/guest';
   $: rt = $page.url.searchParams.get('returnTo') ?? '';
   onMount(() => {
     if (rt.startsWith('/')) sessionStorage.setItem('trusight_return_to', rt);
@@ -11,11 +11,11 @@
   let email = '', password = '', err = '', loading = false, show = false;
   async function submit() {
     loading = true; err = '';
-    const r = await api.post('/auth/login', { email, password });
+    const r = await api.post<{ user: { name: string; email: string; role: string } }>('/auth/login', { email, password });
     loading = false;
     if (!r.ok) { err = r.error.message; return; }
-    setSession(email);
-    location.href = consumeReturnTo();
+    setSession(r.data.user);
+    location.href = resolvePostLogin(consumeReturnTo(''), (r.data.user.role ?? 'buyer') as 'buyer' | 'seller' | 'inspector' | 'admin');
   }
 </script>
 <svelte:head><title>Login — TruSight</title></svelte:head>

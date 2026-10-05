@@ -6,12 +6,11 @@
   import Rail from '$lib/components/layout/Rail.svelte';
   import GuestStrip from '$lib/components/layout/GuestStrip.svelte';
   import LoginModal from '$lib/components/auth/LoginModal.svelte';
-  import { syncSession } from '$lib/guest';
+  import { syncSession, role as roleStore } from '$lib/guest';
 
   $: path = $page.url.pathname;
   $: isApp = path.startsWith('/app') || path.startsWith('/seller') || path.startsWith('/inspector') || path.startsWith('/admin');
-  type Role = 'buyer' | 'seller' | 'inspector' | 'admin';
-  $: role = (path.startsWith('/seller') ? 'seller' : path.startsWith('/inspector') ? 'inspector' : path.startsWith('/admin') ? 'admin' : 'buyer') as Role;
+  $: role = $roleStore;
 
   onMount(() => syncSession());
 </script>

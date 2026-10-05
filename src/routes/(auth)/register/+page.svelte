@@ -3,7 +3,7 @@
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
   import { api } from '$lib/api';
-  import { setSession, consumeReturnTo } from '$lib/guest';
+  import { setSession, consumeReturnTo, resolvePostLogin } from '$lib/guest';
   $: rt = $page.url.searchParams.get('returnTo') ?? '';
   onMount(() => {
     if (rt.startsWith('/')) sessionStorage.setItem('trusight_return_to', rt);
@@ -13,11 +13,11 @@
     err = '';
     if (password !== confirm) { err = 'Konfirmasi password tidak sama.'; return; }
     loading = true;
-    const r = await api.post('/auth/register', { name, email, password });
+    const r = await api.post<{ user: { name: string; email: string; role: string } }>('/auth/register', { name, email, password });
     loading = false;
     if (!r.ok) { err = r.error.message; return; }
-    setSession(email);
-    location.href = consumeReturnTo();
+    setSession(r.data.user);
+    location.href = resolvePostLogin(consumeReturnTo(''), 'buyer');
   }
 </script>
 <svelte:head><title>Register — TruSight</title></svelte:head>

@@ -6,10 +6,21 @@ const err = (code: string, message: string): ApiRes<never> => ({ ok: false, erro
 
 const PRICING: Record<string, number> = { standard: 299000, 'fast-track': 499000 };
 
+const ROLE_BY_EMAIL: Record<string, { name: string; role: string }> = {
+  'budi@mail.com': { name: 'Budi Perkasa', role: 'buyer' },
+  'hendra@showroom.id': { name: 'Hendra Wijaya', role: 'seller' },
+  'budi.s@trusight.id': { name: 'Budi Santoso', role: 'inspector' },
+  'firman@trusight.id': { name: 'Firman Comstir', role: 'inspector' },
+  'admin@trusight.id': { name: 'Admin TruSight', role: 'admin' }
+};
+
 function auth(action: string, b: Body): ApiRes<unknown> {
   if (action === 'login') {
     if (!b.email || !b.password) return err('VALIDATION_ERROR', 'Email dan password wajib diisi');
-    return ok({ user: { id: 'u-mock', name: 'Budi Perkasa', email: b.email, role: 'buyer', trust_score: 98 } });
+    const known = ROLE_BY_EMAIL[String(b.email).toLowerCase()];
+    const name = known?.name ?? 'Budi Perkasa';
+    const role = known?.role ?? 'buyer';
+    return ok({ user: { id: 'u-mock', name, email: b.email, role, trust_score: 98 } });
   }
   if (action === 'register') {
     if (!b.name || !b.email || !b.password) return err('VALIDATION_ERROR', 'Nama, email, password wajib diisi');
