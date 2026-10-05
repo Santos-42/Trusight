@@ -12,16 +12,16 @@
     </div>
     <button class="ts-back shrink-0" aria-label="Notifikasi"><Bell class="size-5" /></button>
   </div>
-  <div class="flex justify-end"><a href="/app/search" class="text-xs font-bold tracking-widest text-brand-600">VIEW ALL</a></div>
+  <div class="flex justify-end"><a href="/app/vouchers" class="text-xs font-bold tracking-widest text-brand-600">VIEW ALL</a></div>
 
-  <div class="grid gap-3 md:grid-cols-2">
-    <div class="relative overflow-hidden rounded-[20px] bg-gradient-to-br from-brand-500 via-brand-600 to-brand-700 p-5 text-white">
+  <div class="flex snap-x gap-3 overflow-x-auto pb-2 md:grid md:grid-cols-2 md:overflow-visible md:pb-0">
+    <div class="relative min-w-[260px] snap-start overflow-hidden rounded-[20px] bg-gradient-to-br from-brand-500 via-brand-600 to-brand-700 p-5 text-white md:min-w-0">
       <Car class="absolute -right-6 -top-6 size-36 opacity-20" />
       <p class="text-[11px] font-bold tracking-[0.18em]">SUMMER OFFER</p>
       <p class="mt-2 text-[22px] font-bold leading-tight">20% Off Verification</p>
       <p class="mt-1 text-[13px] text-white/85">Full surgical inspection for your next purchase.</p>
     </div>
-    <div class="relative overflow-hidden rounded-[20px] bg-gradient-to-br from-ink-800 to-ink-900 p-5 text-white">
+    <div class="relative min-w-[260px] snap-start overflow-hidden rounded-[20px] bg-gradient-to-br from-ink-800 to-ink-900 p-5 text-white md:min-w-0">
       <Car class="absolute -right-6 -top-6 size-36 opacity-20" />
       <p class="text-[11px] font-bold tracking-[0.18em] text-gold-400">PRIORITY REWARDS</p>
       <p class="mt-2 text-[22px] font-bold leading-tight">Fast-Track Queue</p>
@@ -39,4 +39,5 @@
   <div class="grid grid gap-4 sm:grid-cols-[repeat(auto-fill,minmax(250px,1fr))]">
     {#each mockVehicles as v}<VehicleCard {v} />{/each}
   </div>
+  <a href="/app/search" class="btn-outline w-full gap-2"><Car class="size-5" /> Lihat Semua Mobil</a>
 </div>

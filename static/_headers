@@ -1,0 +1,4 @@
+# Anti-cache (Opsi B): HTML selalu revalidasi agar deploy baru langsung terlihat.
+# Aset _app/immutable/* sudah ber-hash (immutable) sehingga aman.
+/*
+  Cache-Control: no-cache

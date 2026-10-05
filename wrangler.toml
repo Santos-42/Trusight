@@ -1,10 +1,12 @@
 name = "trusight"
 compatibility_date = "2025-09-01"
+# Dibaca Pages (beta): direktori output adapter-cloudflare
+pages_build_output_dir = ".svelte-kit/cloudflare"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "trusight-db"
-database_id = "REPLACE_DENGAN_ID_WRANGLER"
+database_name = "trusight"
+database_id = "b59fa32c-92b7-42b4-b16e-19172e82103c"
 
 [[r2_buckets]]
 binding = "PHOTOS"

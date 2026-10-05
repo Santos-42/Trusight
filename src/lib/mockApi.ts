@@ -36,7 +36,7 @@ function auth(action: string, b: Body): ApiRes<unknown> {
  * Mock API lokal — dipakai HANYA saat `vite dev` (`import.meta.env.DEV`),
  * karena folder `functions/` (Pages Functions) tidak hidup di dev server SvelteKit.
  * Produksi tidak tersentuh: di Cloudflare, /api/* dijawab Functions asli.
- * Bentuk respons disamakan dengan functions/api/*/mock fallback.
+ * Bentuk respons disamakan dengan mock fallback di folder functions/api.
  */
 export function mockHandle(path: string, method: string, body: Body): ApiRes<unknown> {
   const seg = path.split('?')[0].split('/').filter(Boolean);
