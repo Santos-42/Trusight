@@ -1,21 +1,13 @@
 name = "trusight"
 compatibility_date = "2025-09-01"
+# Hindari error runtime node:async_hooks pada Functions (peringatan deploy 10:55)
+compatibility_flags = ["nodejs_compat"]
 # Dibaca Pages (beta): direktori output adapter-cloudflare
 pages_build_output_dir = ".svelte-kit/cloudflare"
 
+# Binding aktif dibaca dari DASHBOARD Pages (Settings > Bindings).
+# Stanza di bawah hanya contoh CLI (wajib ID asli bila diaktifkan).
 [[d1_databases]]
 binding = "DB"
 database_name = "trusight"
 database_id = "b59fa32c-92b7-42b4-b16e-19172e82103c"
-
-[[r2_buckets]]
-binding = "PHOTOS"
-bucket_name = "trusight-photos"
-
-[[r2_buckets]]
-binding = "REPORTS"
-bucket_name = "trusight-reports"
-
-[[kv_namespaces]]
-binding = "SESSIONS"
-id = "REPLACE_DENGAN_ID_WRANGLER"
