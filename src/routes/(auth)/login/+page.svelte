@@ -29,6 +29,12 @@
       <button type="button" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" on:click={() => (show = !show)} aria-label="Tampilkan sandi"><Eye class="size-5" /></button>
     </div>
     <div class="text-right text-[13px]"><a href="/forgot" class="text-slate-500">Forgot Password?</a></div>
+    <div class="flex flex-wrap items-center gap-2">
+      <span class="text-[11px] text-slate-400">Demo:</span>
+      {#each [{ r: 'Buyer', e: 'budi@mail.com' }, { r: 'Seller', e: 'hendra@showroom.id' }, { r: 'Inspector', e: 'budi.s@trusight.id' }, { r: 'Admin', e: 'admin@trusight.id' }] as d}
+        <button type="button" class="rounded-full border border-slate-200 px-3 py-1 text-[11px] font-bold text-slate-500" on:click={() => { email = d.e; password = 'demo1234'; }}>{d.r}</button>
+      {/each}
+    </div>
     {#if err}<p class="text-sm text-red-600">{err}</p>{/if}
     <button class="btn-navy w-full" disabled={loading}>{loading ? '...' : 'Login'}</button>
     <div class="my-1 flex items-center gap-3 text-xs text-slate-400"><span class="h-px flex-1 bg-slate-300"></span>Or Login with<span class="h-px flex-1 bg-slate-300"></span></div>
