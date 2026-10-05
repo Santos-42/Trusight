@@ -19,12 +19,12 @@
       { href: '/seller', label: 'Listing', icon: Car },
       { href: '/seller/schedule', label: 'Jadwal', icon: CalendarDays },
       { href: '/seller/certification', label: 'Sertifikasi', icon: Award },
-      { href: '/app/settings', label: 'Profil', icon: User }
+      { href: '/seller/profile', label: 'Profil', icon: User }
     ],
     inspector: [
       { href: '/inspector', label: 'Tugas', icon: ClipboardCheck },
-      { href: '/app/inbox', label: 'Pesan', icon: MessageSquare },
-      { href: '/app/settings', label: 'Profil', icon: User }
+      { href: '/inspector/messages', label: 'Pesan', icon: MessageSquare },
+      { href: '/inspector/profile', label: 'Profil', icon: User }
     ],
     admin: [
       { href: '/admin', label: 'Dash', icon: LayoutDashboard },

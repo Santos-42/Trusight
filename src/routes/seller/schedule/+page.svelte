@@ -8,8 +8,12 @@
 </script>
 <svelte:head><title>Jadwal — Seller</title></svelte:head>
 <div class="grid gap-3">
-  <h1 class="text-xl font-extrabold">Jadwal Inspeksi • Honda Civic Turbo 2021</h1>
+  <h1 class="text-xl font-extrabold">Jadwal Inspeksi</h1>
   <div class="rounded-2xl border bg-white p-5 text-sm grid gap-2">
+    <div class="flex items-center justify-between gap-2">
+      <p class="font-bold">Honda Civic Turbo 2021</p>
+      <span class="pill-amber">Inspeksi Dijadwalkan</span>
+    </div>
     <p>Kamis, 4 Juni • 14:00 WIB • Inspektur: Budi Santoso (GPS Lock)</p>
     <p id="jadwal-msg" class="text-sm text-emerald-700"></p>
     <div class="flex gap-2">
