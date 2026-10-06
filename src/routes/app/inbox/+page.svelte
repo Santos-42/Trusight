@@ -3,6 +3,7 @@
   import { ChevronLeft, CircleUserRound, Inbox as InboxIcon } from '@lucide/svelte';
   import { api } from '$lib/api';
   import { authed, getSession } from '$lib/guest';
+  import { sortThreads } from '$lib/chatStore';
   type Thread = { id: string; n: string; t: string };
   const seed: Thread[] = [
     { id: '1', n:'Firman Comstir', t:'The engine diagnostic for the 9… • 2M AGO' },
@@ -15,7 +16,7 @@
     if (!uid) return;
     const r = await api.get<{ id: string; order_id: string; last_msg?: string }[]>(`/conversations?userId=${encodeURIComponent(uid)}`);
     if (r.ok && r.data.length) {
-      threads = r.data.map((c) => ({ id: c.id, n: `Order ${c.order_id}`, t: c.last_msg ?? 'Belum ada pesan' }));
+      threads = sortThreads(r.data.map((c) => ({ id: c.id, n: `Order ${c.order_id}`, t: c.last_msg ?? 'Belum ada pesan' })));
     }
   });
 </script>

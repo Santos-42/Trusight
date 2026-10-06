@@ -61,7 +61,16 @@ export function mockHandle(path: string, method: string, body: Body): ApiRes<unk
     return ok({ orderId: `#TS-${Math.floor(10000 + Math.random() * 89999)}`, total: PRICING[type], status: 'pending' });
   }
   if (seg[0] === 'orders' && seg[2] === 'pay') {
-    return ok({ paymentId: 'pay-mock', redirectUrl: `/app/success/${seg[1]}`, amount: 499000 });
+    let amount = 499000, discount = 0, voucher: string | null = null;
+    const c = String(body.voucherCode ?? '').toUpperCase();
+    if (c === 'TRU20') { discount = Math.round(amount * 0.2); amount -= discount; voucher = c; }
+    if (c === 'HEMAT50') { discount = Math.min(50000, amount); amount -= discount; voucher = c; }
+    return ok({ paymentId: 'pay-mock', redirectUrl: `/app/success/${seg[1]}`, amount, discount, voucher });
+  }
+  if (seg[0] === 'vouchers' && seg[1] === 'claim') {
+    const c = String(body.code ?? '').toUpperCase();
+    if (!['TRU20', 'HEMAT50', 'FASTTRACK', 'CERT15'].includes(c)) return err('NOT_FOUND', 'Kode voucher tidak dikenal');
+    return ok({ voucherId: 'V-mock', code: c, already: false });
   }
   if (seg[0] === 'inspections' && seg[2] === 'submit') {
     if (!body.score) return err('VALIDATION_ERROR', 'score wajib diisi');

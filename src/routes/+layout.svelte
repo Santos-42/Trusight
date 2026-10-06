@@ -12,7 +12,7 @@
   $: isApp = path.startsWith('/app') || path.startsWith('/seller') || path.startsWith('/inspector') || path.startsWith('/admin');
   $: role = $roleStore;
   /* Thread chat: BottomNav mobile disembunyikan (ala Figma), input chat mentok bawah. */
-  $: isChat = path.startsWith('/app/chat/') || /^\/inspector\/messages\/.+/.test(path);
+  $: isChat = path.startsWith('/app/chat/') || /^\/inspector\/messages\/.+/.test(path) || /^\/seller\/messages\/.+/.test(path);
 
   onMount(() => syncSession());
 </script>

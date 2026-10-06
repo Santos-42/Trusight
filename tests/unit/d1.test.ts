@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { memDb } from '../stub/d1-mem';
 import {
-  approveOrder, checkin, createOrder, ensureConversation, getOrder, getReport,
-  listConversations, listMessages, listOrders, postMessage, publishReport,
+  approveOrder, checkin, claimVoucher, createOrder, ensureConversation, getOrder, getReport,
+  listConversations, listMessages, listOrders, listVouchers, postMessage, publishReport, quoteVoucher,
   resetDemo, submitInspection
 } from '$lib/server/d1';
 
@@ -71,6 +71,33 @@ describe('alur order lintas role', () => {
     const convs = await listConversations(db, 'u-bsantoso');
     expect(convs).toHaveLength(1);
     expect(convs[0].last_msg).toBe('Siap');
+  });
+});
+
+describe('voucher DB', () => {
+  it('claim → quote → pakai → tolak pakai ulang', async () => {
+    const db = memDb(SEED);
+    const c = await claimVoucher(db, 'u-budi', 'tru20');
+    expect(c.code).toBe('TRU20');
+    const dup = await claimVoucher(db, 'u-budi', 'TRU20');
+    expect(dup.already).toBe(true);
+    const q = await quoteVoucher(db, 'u-budi', 'TRU20', 299000);
+    expect(q.discount).toBe(59800);
+    expect(q.total).toBe(239200);
+    await expect(quoteVoucher(db, 'u-budi', 'FASTTRACK', 299000)).rejects.toThrow('tidak berlaku');
+    await expect(quoteVoucher(db, 'u-budi', 'HEMAT50', 299000)).rejects.toThrow('belum diklaim');
+    const mine = await listVouchers(db, 'u-budi');
+    expect(mine.map((m) => m.code)).toEqual(['TRU20']);
+  });
+
+  it('approve memasukkan inspector ke conversation; post yatim 404', async () => {
+    const db = memDb(SEED);
+    const o = await createOrder(db, { vehicleId: 'civic-2021', type: 'standard', buyerId: 'u-budi' });
+    await approveOrder(db, { orderId: o.orderId, inspectorId: 'u-bsantoso', action: 'approve', slot: 'Kamis' });
+    const convs = await listConversations(db, 'u-bsantoso');
+    expect(convs).toHaveLength(1);
+    await expect(postMessage(db, { conversationId: 'conv-tak-ada', senderId: 'u-budi', body: 'halo' }))
+      .rejects.toThrow('Percakapan tidak ditemukan');
   });
 });
 

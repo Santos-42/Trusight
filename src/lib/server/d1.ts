@@ -69,9 +69,13 @@ export async function approveOrder(db: Db, b: ApproveInput) {
   if (!o) throw Object.assign(new Error('Order tidak ditemukan'), { code: 'NOT_FOUND' });
   await exec(db, 'UPDATE orders SET status=? WHERE id=?', 'scheduled', b.orderId);
   const slot = b.slot ?? (b.action === 'alternative' ? 'usulan penjadwalan ulang' : 'menunggu konfirmasi');
+  const inspectorId = b.inspectorId || 'u-bsantoso';
   await exec(db, `INSERT INTO schedules (id, order_id, proposed_by, datetime, inspector_id, status)
-    VALUES (?,?,?,?,?,?)`, uid('SCH'), b.orderId, 'seller', slot, b.inspectorId || 'u-bsantoso',
+    VALUES (?,?,?,?,?,?)`, uid('SCH'), b.orderId, 'seller', slot, inspectorId,
     b.action === 'approve' ? 'approved' : 'proposed');
+  // C2: inspector masuk sebagai peserta conversation order
+  const v = await qOne<{ seller_id: string }>(db, 'SELECT seller_id FROM vehicles WHERE id=?', o.vehicle_id);
+  if (v) await ensureConversation(db, { orderId: b.orderId, buyerId: o.buyer_id, sellerId: v.seller_id, inspectorId });
   return { orderId: b.orderId, status: 'scheduled', slot };
 }
 
@@ -159,6 +163,9 @@ export function listMessages(db: Db, conversationId: string) {
 
 export async function postMessage(db: Db, b: { conversationId: string; senderId: string; body: string }) {
   if (!b.body?.trim()) throw Object.assign(new Error('Pesan kosong'), { code: 'VALIDATION_ERROR' });
+  // C3 anti-yatim: conversation harus ada
+  const conv = await qOne(db, 'SELECT id FROM conversations WHERE id=?', b.conversationId);
+  if (!conv) throw Object.assign(new Error('Percakapan tidak ditemukan'), { code: 'NOT_FOUND', status: 404 });
   const id = uid('M');
   await exec(db, 'INSERT INTO messages (id, conversation_id, sender_id, body) VALUES (?,?,?,?)',
     id, b.conversationId, b.senderId, b.body.trim());
@@ -167,6 +174,42 @@ export async function postMessage(db: Db, b: { conversationId: string; senderId:
 
 export function getMe(db: Db, userId: string) {
   return qOne(db, 'SELECT id, name, email, role, trust_score, status FROM users WHERE id=?', userId);
+}
+
+/** Katalog voucher server-side (satu-satunya sumber kebenaran diskon). */
+export const VOUCHERS: Record<string, { title: string; kind: 'percent' | 'fixed' | 'perk'; value: number; orderOnly: boolean }> = {
+  TRU20: { title: '20% Off Verification', kind: 'percent', value: 20, orderOnly: true },
+  HEMAT50: { title: 'Rp50rb Off Standard', kind: 'fixed', value: 50000, orderOnly: true },
+  FASTTRACK: { title: 'Fast-Track Queue', kind: 'perk', value: 0, orderOnly: false },
+  CERT15: { title: 'Certified Upsell 15%', kind: 'perk', value: 0, orderOnly: false }
+};
+
+export async function claimVoucher(db: Db, userId: string, code: string) {
+  const c = code.trim().toUpperCase();
+  const spec = VOUCHERS[c];
+  if (!spec) throw Object.assign(new Error('Kode voucher tidak dikenal'), { code: 'NOT_FOUND', status: 404 });
+  const dup = await qOne(db, 'SELECT id FROM user_vouchers WHERE user_id=? AND code=?', userId, c);
+  if (dup) return { voucherId: (dup as { id: string }).id, code: c, already: true };
+  const id = uid('V');
+  await exec(db, 'INSERT INTO user_vouchers (id, user_id, code) VALUES (?,?,?)', id, userId, c);
+  return { voucherId: id, code: c, already: false };
+}
+
+export function listVouchers(db: Db, userId: string) {
+  return qAll(db, 'SELECT code, claimed_at, used_at, order_id FROM user_vouchers WHERE user_id=? ORDER BY claimed_at DESC', userId);
+}
+
+/** Validasi voucher untuk order: kembalikan potongan (rupiah). SET used hanya saat pay. */
+export async function quoteVoucher(db: Db, userId: string, code: string, subtotal: number) {
+  const c = code.trim().toUpperCase();
+  const spec = VOUCHERS[c];
+  if (!spec) throw Object.assign(new Error('Kode voucher tidak dikenal'), { code: 'NOT_FOUND', status: 404 });
+  if (!spec.orderOnly) throw Object.assign(new Error(`${c} tidak berlaku untuk potongan order`), { code: 'VALIDATION_ERROR', status: 400 });
+  const row = await qOne(db, 'SELECT used_at FROM user_vouchers WHERE user_id=? AND code=?', userId, c) as { used_at: string | null } | null;
+  if (!row) throw Object.assign(new Error('Voucher belum diklaim'), { code: 'VALIDATION_ERROR', status: 400 });
+  if (row.used_at) throw Object.assign(new Error('Voucher sudah dipakai'), { code: 'VALIDATION_ERROR', status: 400 });
+  const discount = spec.kind === 'percent' ? Math.round((subtotal * spec.value) / 100) : Math.min(spec.value, subtotal);
+  return { code: c, discount, total: subtotal - discount };
 }
 
 const SEED_USERS = [
@@ -186,7 +229,7 @@ const SEED_VEHICLES = [
 export async function resetDemo(db: Db, mode: 'full' | 'transaksi') {
   const cleared: string[] = [];
   for (const t of ['messages', 'conversations', 'certificates', 'reports', 'inspection_photos',
-    'inspection_items', 'inspections', 'payments', 'schedules', 'orders', 'notifications', 'reviews']) {
+    'inspection_items', 'inspections', 'payments', 'schedules', 'orders', 'notifications', 'reviews', 'user_vouchers']) {
     await exec(db, `DELETE FROM ${t}`);
     cleared.push(t);
   }

@@ -1,10 +1,25 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
+  import { browser } from '$app/environment';
   import { page } from '$app/stores';
-  import { ChevronLeft, CreditCard, QrCode, Landmark, Lock, BadgeCheck } from '@lucide/svelte';
+  import { ChevronLeft, CreditCard, QrCode, Landmark, Lock, BadgeCheck, TicketPercent } from '@lucide/svelte';
   import { api } from '$lib/api';
-  import { requireAuth } from '$lib/guest';
+  import { getSession, requireAuth } from '$lib/guest';
   $: orderId = $page.params.orderId;
   let method: 'CARD' | 'QRIS' | 'TRANSFER' = 'CARD', msg = '';
+  let claimed: string[] = [];
+  let voucher = '';
+  const usable = ['TRU20', 'HEMAT50'];
+  onMount(async () => {
+    if (browser) {
+      try { claimed = JSON.parse(localStorage.getItem('trusight_vouchers') ?? '[]'); } catch { /* abaikan */ }
+    }
+    const uid = getSession()?.id;
+    if (!uid) return;
+    const r = await api.get<{ code: string; used_at?: string | null }[]>(`/vouchers/mine?userId=${encodeURIComponent(uid)}`);
+    if (r.ok && r.data.length) claimed = r.data.filter((v) => !v.used_at).map((v) => v.code);
+  });
+  $: vouchers = claimed.filter((c) => usable.includes(c));
   const methods = [
     { id: 'CARD', icon: CreditCard },
     { id: 'QRIS', icon: QrCode },
@@ -12,7 +27,9 @@
   ] as const;
   async function doPay() {
     msg = '';
-    const r = await api.post<{ redirectUrl: string }>(`/orders/${orderId}/pay`, { method });
+    const r = await api.post<{ redirectUrl: string; amount: number; discount: number }>(`/orders/${orderId}/pay`, {
+      method, voucherCode: voucher || undefined, buyerId: getSession()?.id ?? ''
+    });
     if (!r.ok) { msg = r.error.message; return; }
     location.href = `/app/success/${orderId}`;
   }
@@ -46,6 +63,20 @@
         <div class="mt-3 flex justify-end"><span class="pill-blue"><BadgeCheck class="size-3.5" /> PRIORITY QUEUE</span></div>
         <div class="my-3 h-px bg-slate-100"></div>
         <div class="flex items-center justify-between"><p class="text-sm text-slate-500">Total Amount Due</p><p class="text-xl font-extrabold">Rp....</p></div>
+        {#if vouchers.length}
+          <div class="mt-3 grid gap-2">
+            <p class="ts-eyebrow">Pakai voucher</p>
+            <div class="flex flex-wrap gap-2">
+              <button class="pill {voucher === '' ? 'pill-blue' : ''}" on:click={() => (voucher = '')}>Tanpa voucher</button>
+              {#each vouchers as c}
+                <button class="pill {voucher === c ? 'pill-blue' : ''}" on:click={() => (voucher = voucher === c ? '' : c)}>
+                  <TicketPercent class="size-3.5" /> {c}{c === 'TRU20' ? ' −20%' : ' −Rp50rb'}
+                </button>
+              {/each}
+            </div>
+            {#if voucher}<p class="text-xs text-emerald-700">Diskon dihitung server saat bayar — nominal akhir tercatat di pembayaran.</p>{/if}
+          </div>
+        {/if}
       </div>
     </div>
     <div class="grid content-start gap-5">

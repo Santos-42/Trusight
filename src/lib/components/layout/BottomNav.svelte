@@ -15,6 +15,7 @@
     seller: [
       { href: '/seller', label: 'Listing', icon: Car },
       { href: '/seller/schedule', label: 'Jadwal', icon: CalendarDays },
+      { href: '/seller/messages', label: 'Pesan', icon: MessageSquare },
       { href: '/seller/profile', label: 'Profil', icon: User }
     ],
     inspector: [

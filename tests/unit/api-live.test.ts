@@ -54,6 +54,22 @@ describe('endpoint live D1', () => {
     expect(list.data).toHaveLength(1);
   });
 
+  it('voucher claim/mine + pay dengan diskon server-side', async () => {
+    const db = memDb(SEED);
+    const uid = 'u-budi';
+    const created = await (await POST(ctx('orders', 'POST', { vehicleId: 'civic-2021', type: 'standard', buyerId: uid }, db))).json();
+    const id: string = created.data.orderId;
+    const claim = await (await POST(ctx('vouchers/claim', 'POST', { userId: uid, code: 'HEMAT50' }, db))).json();
+    expect(claim.ok).toBe(true);
+    // Tanpa migrasi 003 di stub: tabel dibuat on-the-fly oleh stub
+    const pay = await (await POST(ctx(`orders/${id}/pay`, 'POST', { method: 'QRIS', voucherCode: 'HEMAT50', buyerId: uid }, db))).json();
+    expect(pay.data.amount).toBe(created.data.total - 50000);
+    expect(pay.data.discount).toBe(50000);
+    // Pakai ulang ditolak
+    const pay2 = await (await POST(ctx(`orders/${id}/pay`, 'POST', { method: 'QRIS', voucherCode: 'HEMAT50', buyerId: uid }, db))).json();
+    expect(pay2.ok).toBe(false);
+  });
+
   it('reset full tanpa key env → 404; dengan key → ok, users tetap', async () => {
     const db = memDb(SEED);
     await POST(ctx('orders', 'POST', { vehicleId: 'civic-2021', type: 'standard', buyerId: 'u-budi' }, db));

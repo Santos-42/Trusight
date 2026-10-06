@@ -2,9 +2,9 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { mockHandle } from '$lib/mockApi';
 import {
-  approveOrder, checkin, createOrder, ensureConversation, getMe, getOrder, getReport,
-  listConversations, listMessages, listOrders, listReports, postMessage, publishReport, resetDemo,
-  submitInspection, uid, type Db
+  approveOrder, checkin, claimVoucher, createOrder, ensureConversation, getMe, getOrder, getReport,
+  listConversations, listMessages, listOrders, listReports, listVouchers, postMessage, publishReport,
+  quoteVoucher, resetDemo, submitInspection, uid, type Db
 } from '$lib/server/d1';
 
 type Penv = App.Platform['env'];
@@ -158,14 +158,48 @@ async function handleLive(path: string, method: string, body: Record<string, unk
     if (seg[0] === 'orders' && seg[1] && seg[2] === 'pay' && method === 'POST') {
       const o = await getOrder(DB, seg[1]);
       if (!o) return err('NOT_FOUND', 'Order tidak ditemukan', 404);
+      const b = body as Record<string, string>;
+      let amount = (o as { total: number }).total;
+      let voucher: string | null = null;
+      let discount = 0;
+      if (b.voucherCode) {
+        try {
+          const q = await quoteVoucher(DB, b.buyerId ?? '', String(b.voucherCode), amount);
+          discount = q.discount; amount = q.total; voucher = q.code;
+        } catch (e) {
+          const ce = e as { message?: string; status?: number };
+          return err('VALIDATION_ERROR', ce.message ?? 'Voucher tidak valid', ce.status ?? 400);
+        }
+      }
       await DB.prepare('INSERT INTO payments (id, order_id, provider, amount, method, status) VALUES (?,?,?,?,?,?)')
-        .bind(uid('PAY'), seg[1], 'mock', (o as { total: number }).total, (body as Record<string, string>).method ?? 'QRIS', 'paid').run();
-      return ok({ paymentId: 'pay-live', redirectUrl: `/app/success/${seg[1]}`, amount: (o as { total: number }).total });
+        .bind(uid('PAY'), seg[1], 'mock', amount, b.method ?? 'QRIS', 'paid').run();
+      if (voucher) {
+        await DB.prepare('UPDATE user_vouchers SET used_at=datetime(\'now\'), order_id=? WHERE user_id=? AND code=?')
+          .bind(seg[1], b.buyerId ?? '', voucher).run();
+      }
+      return ok({ paymentId: 'pay-live', redirectUrl: `/app/success/${seg[1]}`, amount, discount, voucher });
     }
     if (seg[0] === 'orders' && seg[1] && method === 'GET') {
       const o = await getOrder(DB, seg[1]);
       if (!o) return err('NOT_FOUND', 'Order tidak ditemukan', 404);
       return ok(o);
+    }
+
+    // --- vouchers ---
+    if (seg[0] === 'vouchers' && seg[1] === 'claim' && method === 'POST') {
+      const { userId, code } = body as Record<string, string>;
+      if (!userId || !code) return err('VALIDATION_ERROR', 'userId dan code wajib diisi');
+      try {
+        return ok(await claimVoucher(DB, userId, code));
+      } catch (e) {
+        const ce = e as { message?: string; status?: number };
+        return err('NOT_FOUND', ce.message ?? 'Voucher tidak dikenal', ce.status ?? 404);
+      }
+    }
+    if (seg[0] === 'vouchers' && seg[1] === 'mine' && method === 'GET') {
+      const userId = query.get('userId') ?? '';
+      if (!userId) return err('VALIDATION_ERROR', 'userId wajib diisi');
+      return ok(await listVouchers(DB, userId));
     }
 
     // --- inspections ---
@@ -215,11 +249,16 @@ async function handleLive(path: string, method: string, body: Record<string, unk
       return ok(await postMessage(DB, { conversationId, senderId, body: text ?? '' }));
     }
 
-    // --- me ---
+    // --- me & users ---
     if (seg[0] === 'me' && method === 'GET') {
       const userId = query.get('userId') ?? '';
       if (!userId) return err('VALIDATION_ERROR', 'userId wajib diisi');
       const u = await getMe(DB, userId);
+      if (!u) return err('NOT_FOUND', 'User tidak ditemukan', 404);
+      return ok(u);
+    }
+    if (seg[0] === 'users' && seg[1] && method === 'GET') {
+      const u = await getMe(DB, seg[1]);
       if (!u) return err('NOT_FOUND', 'User tidak ditemukan', 404);
       return ok(u);
     }

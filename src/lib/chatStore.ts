@@ -25,3 +25,29 @@ export function saveMsgs(id: string, msgs: ChatMsg[]) {
     /* abaikan */
   }
 }
+
+const ORDER_KEY = 'trusight_thread_order';
+
+/** Urutan thread ala WhatsApp: id yang baru dikirim naik ke posisi 1. */
+export function bumpThread(id: string) {
+  if (!browser) return;
+  try {
+    const raw = JSON.parse(localStorage.getItem(ORDER_KEY) ?? '[]') as unknown;
+    const arr = Array.isArray(raw) ? (raw as string[]).filter((x) => x !== id) : [];
+    localStorage.setItem(ORDER_KEY, JSON.stringify([id, ...arr].slice(0, 30)));
+  } catch {
+    /* abaikan */
+  }
+}
+
+export function sortThreads<T extends { id: string }>(threads: T[]): T[] {
+  if (!browser) return threads;
+  try {
+    const raw = JSON.parse(localStorage.getItem(ORDER_KEY) ?? '[]') as unknown;
+    if (!Array.isArray(raw) || !raw.length) return threads;
+    const rank = new Map((raw as string[]).map((x, i) => [x, i]));
+    return [...threads].sort((a, b) => (rank.get(a.id) ?? 999) - (rank.get(b.id) ?? 999));
+  } catch {
+    return threads;
+  }
+}

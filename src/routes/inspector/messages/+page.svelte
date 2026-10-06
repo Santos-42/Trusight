@@ -3,6 +3,7 @@
   import { ChevronLeft, CircleUserRound } from '@lucide/svelte';
   import { api } from '$lib/api';
   import { getSession } from '$lib/guest';
+  import { bumpThread, sortThreads } from '$lib/chatStore';
   type Thread = { id: string; n: string; s: string; t: string };
   const seed: Thread[] = [
     { id: '1', n: 'Firman Comstir', s: 'EXPERT VERIFIER', t: 'The RMS is bone dry… • 10:47 AM' },
@@ -14,7 +15,7 @@
     if (!uid) return;
     const r = await api.get<{ id: string; order_id: string; last_msg?: string }[]>(`/conversations?userId=${encodeURIComponent(uid)}`);
     if (r.ok && r.data.length) {
-      threads = r.data.map((c) => ({ id: c.id, n: `Order ${c.order_id}`, s: 'PERCAKAPAN ORDER', t: c.last_msg ?? 'Belum ada pesan' }));
+      threads = sortThreads(r.data.map((c) => ({ id: c.id, n: `Order ${c.order_id}`, s: 'PERCAKAPAN ORDER', t: c.last_msg ?? 'Belum ada pesan' })));
     }
   });
 </script>

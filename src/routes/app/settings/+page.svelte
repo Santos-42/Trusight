@@ -56,18 +56,11 @@
         </div>
         <p class="ts-eyebrow">General Settings</p>
         <div class="ts-card divide-y divide-slate-100 !p-0">
-          <button class="flex w-full items-center gap-3 p-4 text-left" on:click={() => (section = section === 'account' ? null : 'account')}>
+          <a href="/app/settings/account" class="flex w-full items-center gap-3 p-4 text-left">
             <UserCog class="size-5 text-slate-400" />
             <span class="flex-1"><span class="block text-sm font-bold">Account Settings</span><span class="block text-xs text-slate-400">ID, email, telepon, status</span></span>
             <ChevronRight class="size-4 text-slate-300" />
-          </button>
-          {#if section === 'account'}
-            <div class="grid gap-1 bg-slate-50 px-4 py-3 text-[13px] text-slate-600">
-              <p>Email: budi.perks@gmail.com</p>
-              <p>Phone: +62 856-1908-7645</p>
-              <p>Trust score: 98% • Protection level: HIGH</p>
-            </div>
-          {/if}
+          </a>
           <button class="flex w-full items-center gap-3 p-4 text-left" on:click={() => (section = section === 'payment' ? null : 'payment')}>
             <CreditCard class="size-5 text-slate-400" />
             <span class="flex-1"><span class="block text-sm font-bold">Payment Methods</span><span class="block text-xs text-slate-400">VISA •••• 4242, QRIS</span></span>

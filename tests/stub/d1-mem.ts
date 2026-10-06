@@ -80,7 +80,9 @@ export function memDb(seed: Seed = {}): Db {
   }
 
   function runSelect(sql: string, params: unknown[]): Row[] {
-    const { cols: colsRaw, fromT, fromA, rest } = splitSelect(sql);
+    const norm = normArgs(sql, params);
+    const { cols: colsRaw, fromT, fromA, rest } = splitSelect(norm.q);
+    params = norm.params;
     const baseA = fromA;
     let rows: Row[] = tbl(fromT).map((r) => {
       const o: Row = { _rid: r._rid };

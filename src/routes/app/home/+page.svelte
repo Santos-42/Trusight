@@ -10,7 +10,7 @@
       <h1 class="text-[24px] font-bold leading-snug tracking-tight">Verified Precision, <span class="text-brand-600">Clinical Standards.</span></h1>
       <p class="mt-1 text-[13px] text-slate-500">Every vehicle in our network undergoes a 150-point surgical verification process.</p>
     </div>
-    <button class="ts-back shrink-0" aria-label="Notifikasi"><Bell class="size-5" /></button>
+    <a href="/app/inbox" class="ts-back relative shrink-0" aria-label="Notifikasi"><Bell class="size-5" /><span class="absolute -right-0.5 -top-0.5 grid size-4 place-items-center rounded-full bg-red-600 text-[9px] font-bold text-white">3</span></a>
   </div>
   <div class="flex justify-end"><a href="/app/vouchers" class="text-xs font-bold tracking-widest text-brand-600">VIEW ALL</a></div>
 

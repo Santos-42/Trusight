@@ -6,6 +6,7 @@
   import type { ChatMsg } from '$lib/components/chat/chat';
   import { api } from '$lib/api';
   import { getSession, requireAuth } from '$lib/guest';
+  import { bumpThread } from '$lib/chatStore';
   $: id = $page.params.id ?? '1';
   const peers: Record<string, { n: string; s: string }> = {
     '1': { n: 'Firman Comstir', s: 'EXPERT VERIFIER' },
@@ -33,16 +34,15 @@
       msgs = r.data.map((m) => ({ me: m.sender_id === uid, text: m.body, time: String(m.created_at ?? '').slice(11, 16) }));
     }
   });
-  function send(text: string) {
-    requireAuth(() => {
+  async function send(text: string) {
+    requireAuth(async () => {
       const uid = getSession()?.id ?? 'u-bsantoso';
-      if (live) {
-        void api.post('/messages', { conversationId: id, senderId: uid, body: text }).then((r) => {
-          if (r.ok) msgs = [...msgs, { me: true, text, time: 'now' }];
-        });
-      } else {
-        msgs = [...msgs, { me: true, text, time: 'now' }];
-      }
+      const optimistic: ChatMsg = { me: true, text, time: 'now' };
+      msgs = [...msgs, optimistic];
+      bumpThread(id);
+      if (!live) return;
+      const r = await api.post('/messages', { conversationId: id, senderId: uid, body: text });
+      if (!r.ok) msgs = [...msgs.filter((m) => m !== optimistic), { ...optimistic, time: 'gagal, coba lagi' }];
     }, `/inspector/messages/${id}`);
   }
 </script>

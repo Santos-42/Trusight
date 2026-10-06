@@ -17,7 +17,14 @@
       const known = /olx\.co\.id|mobil123|carmudi|mobilbekas|carsome|momobil/i.test(url);
       if (/^https?:\/\//i.test(url) && (known || /mobil/i.test(url))) {
         linkOk = true;
-        linkMsg = 'Link valid — listing mobil bekas terdeteksi. Pilih kendaraan di atas lalu Buat Order.';
+        const slug = url.replace(/^https?:\/\//i, '').split(/[?#]/)[0];
+        // Mock-detect: cocokkan katalog terdekat dari kata kunci URL
+        const low = url.toLowerCase();
+        const match = /911|porsche/.test(low) ? 'porsche-911-2022' : /avanza|veloz/.test(low) ? 'avanza-2022' : 'civic-2021';
+        linkMsg = `Terdeteksi dari link: ${slug}. Membuka detail…`;
+        setTimeout(() => {
+          location.href = `/app/vehicle/${match}?from=link&src=${encodeURIComponent(slug)}`;
+        }, 900);
       } else {
         linkMsg = 'Link tidak dikenali sebagai listing mobil bekas. Periksa kembali tautannya.';
       }

@@ -4,47 +4,82 @@
   import { ChevronLeft, CircleUserRound } from '@lucide/svelte';
   import ChatThread from '$lib/components/chat/ChatThread.svelte';
   import type { ChatMsg } from '$lib/components/chat/chat';
-  import { loadMsgs, saveMsgs } from '$lib/chatStore';
+  import { loadMsgs, saveMsgs, bumpThread } from '$lib/chatStore';
   import { api } from '$lib/api';
   import { getSession, requireAuth } from '$lib/guest';
   $: id = $page.params.id ?? '1';
-  const defaults: ChatMsg[] = [{ me: false, text: 'Baik pak, saya tunggu di lokasi jam 2 siang ya.', time: '10:30' }];
-  let msgs: ChatMsg[] = loadMsgs(`buyer-${id}`, defaults);
-  let live = false;
+  $: isSeed = id === '1';
+  const seedMsgs: ChatMsg[] = [{ me: false, text: 'Baik pak, saya tunggu di lokasi jam 2 siang ya.', time: '10:30' }];
+  let msgs: ChatMsg[] = isSeed ? loadMsgs('buyer-1', seedMsgs) : [];
+  let loading = !isSeed;
+  let peer = 'Hendra Wijaya';
+  let peerSub = 'PENJUAL • CIVIC TURBO 2021';
   onMount(async () => {
+    if (isSeed) return;
     const uid = getSession()?.id;
-    if (!uid) return;
-    const r = await api.get<{ sender_id: string; sender: string; body: string; created_at: string }[]>(
+    // Nama lawan bicara dari conversation bila tersedia
+    if (uid) {
+      const c = await api.get<{ id: string; seller_id: string }[]>(`/conversations?userId=${encodeURIComponent(uid)}`);
+      if (c.ok) {
+        const mine = c.data.find((x) => x.id === id);
+        if (mine?.seller_id) {
+          const u = await api.get<{ name: string }>(`/users/${encodeURIComponent(mine.seller_id)}`);
+          if (u.ok && u.data?.name) peer = u.data.name;
+        }
+      }
+    }
+    const r = await api.get<{ sender_id: string; body: string; created_at: string }[]>(
       `/messages?conversationId=${encodeURIComponent(id)}`);
-    if (r.ok) {
-      live = true;
-      msgs = r.data.map((m) => ({ me: m.sender_id === uid, text: m.body, time: String(m.created_at ?? '').slice(11, 16) }));
+    loading = false;
+    if (r.ok && r.data.length) {
+      const myId = getSession()?.id;
+      msgs = r.data.map((m) => ({ me: m.sender_id === myId, text: m.body, time: String(m.created_at ?? '').slice(11, 16) }));
+    } else if (r.ok) {
+      msgs = [];
+    } else {
+      msgs = loadMsgs(`buyer-${id}`, []);
     }
   });
-  function send(text: string) {
-    requireAuth(() => {
+  async function send(text: string) {
+    requireAuth(async () => {
       const uid = getSession()?.id ?? 'u-mock';
-      if (live) {
-        void api.post('/messages', { conversationId: id, senderId: uid, body: text }).then((r) => {
-          if (r.ok) msgs = [...msgs, { me: true, text, time: 'now' }];
-        });
-      } else {
-        msgs = [...msgs, { me: true, text, time: 'now' }];
-        saveMsgs(`buyer-${id}`, msgs);
+      const optimistic: ChatMsg = { me: true, text, time: 'now' };
+      msgs = [...msgs, optimistic];
+      bumpThread(id);
+      if (!isSeed) saveMsgs(`buyer-${id}`, msgs);
+      if (!isSeed) {
+        const r = await api.post('/messages', { conversationId: id, senderId: uid, body: text });
+        if (!r.ok) {
+          msgs = [...msgs.filter((m) => m !== optimistic), { ...optimistic, time: 'gagal, coba lagi' }];
+          saveMsgs(`buyer-${id}`, msgs);
+        }
+      } else if (isSeed) {
+        saveMsgs('buyer-1', msgs);
       }
     }, `/app/chat/${id}`);
   }
 </script>
 <svelte:head><title>Chat — TruSight</title></svelte:head>
 <div class="mx-auto max-w-md lg:max-w-2xl">
-  <ChatThread messages={msgs} onSend={send} placeholder="Tulis pesan...">
-    <div slot="header" class="flex items-center gap-3">
-      <a href="/app/inbox" class="ts-back" aria-label="Kembali"><ChevronLeft class="size-5" /></a>
-      <CircleUserRound class="size-10 shrink-0 text-slate-300" />
-      <div class="min-w-0">
-        <p class="truncate font-bold">Rian F. (Civic)</p>
-        <p class="text-[11px] tracking-wide text-slate-400">CALON PEMBELI</p>
-      </div>
+  {#if loading}
+    <div class="grid gap-2 py-8 text-center text-sm text-slate-400">
+      <p>Memuat percakapan…</p>
     </div>
-  </ChatThread>
+  {:else}
+    <ChatThread
+      messages={msgs}
+      onSend={send}
+      placeholder="Tulis pesan..."
+      topNote={!msgs.length ? 'Belum ada pesan — mulai percakapan' : ''}
+    >
+      <div slot="header" class="flex items-center gap-3">
+        <a href="/app/inbox" class="ts-back" aria-label="Kembali"><ChevronLeft class="size-5" /></a>
+        <CircleUserRound class="size-10 shrink-0 text-slate-300" />
+        <div class="min-w-0">
+          <p class="truncate font-bold">{peer}</p>
+          <p class="text-[11px] tracking-wide text-slate-400">{peerSub}</p>
+        </div>
+      </div>
+    </ChatThread>
+  {/if}
 </div>
