@@ -9,7 +9,7 @@ export const authed = writable<boolean>(false);
 /** Role user login. Tamu = buyer (menu buyer + tombol Masuk). */
 export type Role = 'buyer' | 'seller' | 'inspector' | 'admin';
 export const role = writable<Role>('buyer');
-type Session = { name: string; email: string; role: Role; at: number };
+type Session = { id: string; name: string; email: string; role: Role; at: number };
 const VALID_ROLES: Role[] = ['buyer', 'seller', 'inspector', 'admin'];
 /** State global modal penawaran login. */
 export const loginModal = writable<{ open: boolean }>({ open: false });
@@ -33,16 +33,16 @@ function readSession(): Session | null {
     const s = JSON.parse(raw) as Partial<Session>;
     if (!s.email) return null;
     const r = (s.role ?? 'buyer') as Role;
-    return { name: s.name ?? s.email, email: s.email, role: VALID_ROLES.includes(r) ? r : 'buyer', at: s.at ?? Date.now() };
+    return { id: s.id ?? 'u-mock', name: s.name ?? s.email, email: s.email, role: VALID_ROLES.includes(r) ? r : 'buyer', at: s.at ?? Date.now() };
   } catch {
     return null;
   }
 }
 
-export function setSession(user: { name?: string; email: string; role?: string }) {
+export function setSession(user: { id?: string; name?: string; email: string; role?: string }) {
   if (!browser) return;
   const r = (user.role ?? 'buyer') as Role;
-  const s: Session = { name: user.name ?? user.email, email: user.email, role: VALID_ROLES.includes(r) ? r : 'buyer', at: Date.now() };
+  const s: Session = { id: user.id ?? 'u-mock', name: user.name ?? user.email, email: user.email, role: VALID_ROLES.includes(r) ? r : 'buyer', at: Date.now() };
   localStorage.setItem(KEY, JSON.stringify(s));
   authed.set(true);
   role.set(s.role);

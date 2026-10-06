@@ -1,14 +1,28 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { page } from '$app/stores';
   import { ChevronLeft, Share2, CalendarDays, User, ShieldCheck, CheckCircle2, Car } from '@lucide/svelte';
   import ScoreRing from '$lib/components/vehicle/ScoreRing.svelte';
   import { buildReportPdf } from '$lib/reportPdf';
+  import { rupiah } from '$lib/format';
+  import { api } from '$lib/api';
   import { shareOrCopy } from '$lib/share';
   $: id = $page.params.id ?? 'REP-3401';
+  type Live = { vehicle: string; inspector: string; score_snapshot: number; grade_snapshot: string; published: number; created_at: string; order_status: string };
+  let live: Live | null = null;
+  onMount(async () => {
+    if (!id || id === 'REP-3401') return;
+    const r = await api.get<Live>(`/reports/${encodeURIComponent(id)}`);
+    if (r.ok) live = r.data;
+  });
+  $: vehicle = live?.vehicle ?? 'Porsche 911 Carrera S 2022';
+  $: score = live?.score_snapshot ?? 94;
+  $: grade = live?.grade_snapshot ?? 'A';
+  $: inspector = live?.inspector ?? 'Firman Comstir';
   let msg = '';
   async function downloadPdf() {
     msg = 'Membuat PDF (pdf-lib, OSS)...';
-    const blob = await buildReportPdf({ reportId: id, vehicle: 'Porsche 911 Carrera S 2022', score: 94, grade: 'A', inspector: 'Firman Comstir', date: '24 Okt 2023' });
+    const blob = await buildReportPdf({ reportId: id, vehicle, score, grade, inspector, date: '24 Okt 2023' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `${id}.pdf`;
@@ -30,13 +44,13 @@
     <div class="grid gap-5">
       <div><span class="pill-doc">OFFICIAL DOCUMENT</span></div>
       <div>
-        <h1 class="text-[26px] font-bold tracking-tight">Porsche 911 <span class="text-brand-600">Carrera S, 2022</span></h1>
+        <h1 class="text-[26px] font-bold tracking-tight">{vehicle}</h1>
         <div class="mt-2 grid gap-1 text-[13px] text-slate-500">
           <p class="flex items-center gap-2"><CalendarDays class="size-4" /> Verified: Oct 24, 2023</p>
-          <p class="flex items-center gap-2"><User class="size-4" /> Inspector: Firman Comstir <span class="ml-1 inline-flex items-center gap-1 font-bold text-brand-700"><ShieldCheck class="size-4" /> PASSED</span></p>
+          <p class="flex items-center gap-2"><User class="size-4" /> Inspector: {inspector} <span class="ml-1 inline-flex items-center gap-1 font-bold text-brand-700"><ShieldCheck class="size-4" /> PASSED</span></p>
         </div>
       </div>
-      <ScoreRing score={94} />
+      <ScoreRing {score} />
       <div class="grid h-52 place-items-center overflow-hidden rounded-[20px] bg-gradient-to-b from-[#3a4350] to-[#14181e] text-white/90"><Car class="size-28" /></div>
       <div class="ts-card">
         <div class="flex items-baseline justify-between">
@@ -54,7 +68,7 @@
     <aside class="grid content-start gap-3 lg:sticky lg:top-20">
       <div class="ts-card grid gap-2 text-sm">
         <p class="ts-eyebrow">Summary</p>
-        <p><b>Skor:</b> 94/100 • <b>Grade:</b> A</p>
+        <p><b>Skor:</b> {score}/100 • <b>Grade:</b> {grade}</p>
         <p><b>Rekomendasi:</b> Beli dengan negosiasi ringan</p>
         <p class="text-slate-500">Garansi mesin & transmisi 30 hari.</p>
       </div>

@@ -1,16 +1,17 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { mockHandle } from '$lib/mockApi';
+import {
+  approveOrder, checkin, createOrder, ensureConversation, getMe, getOrder, getReport,
+  listConversations, listMessages, listOrders, listReports, postMessage, publishReport, resetDemo,
+  submitInspection, uid, type Db
+} from '$lib/server/d1';
 
 type Penv = App.Platform['env'];
 
 const ok = (data: unknown) => json({ ok: true, data });
 const err = (code: string, message: string, status = 400) =>
   json({ ok: false, error: { code, message } }, { status });
-
-function uid(prefix: string): string {
-  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`.toUpperCase();
-}
 
 const KNOWN: Record<string, { name: string; role: string }> = {
   'budi@mail.com': { name: 'Budi Perkasa', role: 'buyer' },
@@ -109,14 +110,150 @@ async function handleAuth(action: string, body: Record<string, unknown>, penv: P
   }
 }
 
-const handler: RequestHandler = async ({ request, params, platform }) => {
+function dbErr(e: unknown) {
+  const code = (e as { code?: string })?.code;
+  const msg = e instanceof Error ? e.message : 'Server error';
+  if (code === 'NOT_FOUND') return err('NOT_FOUND', msg, 404);
+  if (code === 'VALIDATION_ERROR') return err('VALIDATION_ERROR', msg);
+  console.error(e);
+  return err('UPSTREAM_ERROR', 'Server error', 500);
+}
+
+/** API live D1 (Fase 1–4 integrasi). Tanpa DB -> fallback mockHandle (dev). */
+async function handleLive(path: string, method: string, body: Record<string, unknown>, query: URLSearchParams, penv: Penv) {
+  const DB = penv?.DB as Db | undefined;
+  const seg = path.split('?')[0].split('/').filter(Boolean);
+  if (!DB) return json(mockHandle(path, method, body));
+
+  try {
+    // --- orders ---
+    if (seg[0] === 'orders' && seg.length === 1 && method === 'POST') {
+      const { vehicleId, type, buyerId } = body as Record<string, string>;
+      if (!vehicleId || !buyerId) return err('VALIDATION_ERROR', 'vehicleId dan buyerId wajib diisi');
+      return ok(await createOrder(DB, { vehicleId, type: type ?? 'standard', buyerId }));
+    }
+    if (seg[0] === 'orders' && seg[1] === 'mine' && method === 'GET') {
+      const buyerId = query.get('buyerId') ?? '';
+      if (!buyerId) return err('VALIDATION_ERROR', 'buyerId wajib diisi');
+      return ok(await listOrders(DB, { buyerId, status: query.get('status') ?? undefined }));
+    }
+    if (seg[0] === 'orders' && seg[1] === 'incoming' && method === 'GET') {
+      const sellerId = query.get('sellerId') ?? '';
+      if (!sellerId) return err('VALIDATION_ERROR', 'sellerId wajib diisi');
+      return ok(await listOrders(DB, { sellerId, status: query.get('status') ?? undefined }));
+    }
+    if (seg[0] === 'orders' && seg[1] === 'assigned' && method === 'GET') {
+      const inspectorId = query.get('inspectorId') ?? '';
+      if (!inspectorId) return err('VALIDATION_ERROR', 'inspectorId wajib diisi');
+      return ok(await listOrders(DB, { inspectorId, status: query.get('status') ?? undefined }));
+    }
+    if (seg[0] === 'orders' && seg.length === 1 && method === 'GET') {
+      return ok(await listOrders(DB, { status: query.get('status') ?? undefined }));
+    }
+    if (seg[0] === 'orders' && seg[1] && seg[2] === 'approve' && method === 'POST') {
+      const { inspectorId, action, slot } = body as Record<string, string>;
+      if (!inspectorId) return err('VALIDATION_ERROR', 'inspectorId wajib diisi');
+      return ok(await approveOrder(DB, { orderId: seg[1], inspectorId, action: action === 'alternative' ? 'alternative' : 'approve', slot }));
+    }
+    if (seg[0] === 'orders' && seg[1] && seg[2] === 'pay' && method === 'POST') {
+      const o = await getOrder(DB, seg[1]);
+      if (!o) return err('NOT_FOUND', 'Order tidak ditemukan', 404);
+      await DB.prepare('INSERT INTO payments (id, order_id, provider, amount, method, status) VALUES (?,?,?,?,?,?)')
+        .bind(uid('PAY'), seg[1], 'mock', (o as { total: number }).total, (body as Record<string, string>).method ?? 'QRIS', 'paid').run();
+      return ok({ paymentId: 'pay-live', redirectUrl: `/app/success/${seg[1]}`, amount: (o as { total: number }).total });
+    }
+    if (seg[0] === 'orders' && seg[1] && method === 'GET') {
+      const o = await getOrder(DB, seg[1]);
+      if (!o) return err('NOT_FOUND', 'Order tidak ditemukan', 404);
+      return ok(o);
+    }
+
+    // --- inspections ---
+    if (seg[0] === 'inspections' && seg[1] === 'checkin' && method === 'POST') {
+      const { orderId, inspectorId, lat, lng, valid } = body as unknown as { orderId: string; inspectorId: string; lat: number; lng: number; valid: boolean };
+      if (!orderId || !inspectorId) return err('VALIDATION_ERROR', 'orderId dan inspectorId wajib diisi');
+      return ok(await checkin(DB, { orderId, inspectorId, lat: Number(lat), lng: Number(lng), valid: !!valid }));
+    }
+    if (seg[0] === 'inspections' && seg[1] === 'submit' && method === 'POST') {
+      const b = body as Record<string, unknown> as unknown as Parameters<typeof submitInspection>[1];
+      if (!b.orderId || !b.inspectorId || !b.score) return err('VALIDATION_ERROR', 'orderId, inspectorId, score wajib diisi');
+      return ok(await submitInspection(DB, b));
+    }
+
+    // --- reports ---
+    if (seg[0] === 'reports' && seg.length === 1 && method === 'GET') {
+      return ok(await listReports(DB));
+    }
+    if (seg[0] === 'reports' && seg[1] && seg[2] === 'publish' && method === 'POST') {
+      return ok(await publishReport(DB, seg[1]));
+    }
+    if (seg[0] === 'reports' && seg[1] && method === 'GET') {
+      const r = await getReport(DB, seg[1]);
+      if (!r) return err('NOT_FOUND', 'Report tidak ditemukan', 404);
+      return ok(r);
+    }
+
+    // --- chat ---
+    if (seg[0] === 'conversations' && method === 'POST') {
+      const { orderId, buyerId, sellerId, inspectorId } = body as Record<string, string>;
+      if (!orderId || !buyerId || !sellerId) return err('VALIDATION_ERROR', 'orderId, buyerId, sellerId wajib diisi');
+      return ok(await ensureConversation(DB, { orderId, buyerId, sellerId, inspectorId }));
+    }
+    if (seg[0] === 'conversations' && method === 'GET') {
+      const userId = query.get('userId') ?? '';
+      if (!userId) return err('VALIDATION_ERROR', 'userId wajib diisi');
+      return ok(await listConversations(DB, userId));
+    }
+    if (seg[0] === 'messages' && method === 'GET') {
+      const conversationId = query.get('conversationId') ?? '';
+      if (!conversationId) return err('VALIDATION_ERROR', 'conversationId wajib diisi');
+      return ok(await listMessages(DB, conversationId));
+    }
+    if (seg[0] === 'messages' && method === 'POST') {
+      const { conversationId, senderId, body: text } = body as Record<string, string>;
+      if (!conversationId || !senderId) return err('VALIDATION_ERROR', 'conversationId dan senderId wajib diisi');
+      return ok(await postMessage(DB, { conversationId, senderId, body: text ?? '' }));
+    }
+
+    // --- me ---
+    if (seg[0] === 'me' && method === 'GET') {
+      const userId = query.get('userId') ?? '';
+      if (!userId) return err('VALIDATION_ERROR', 'userId wajib diisi');
+      const u = await getMe(DB, userId);
+      if (!u) return err('NOT_FOUND', 'User tidak ditemukan', 404);
+      return ok(u);
+    }
+
+    // --- demo reset (Fase 4): endpoint khusus, key via env. Tanpa RESET_KEY -> mati total. ---
+    if (seg[0] === 'demo' && seg[1] === 'reset' && (method === 'POST' || method === 'GET')) {
+      const RESET_KEY = (penv as Record<string, string> | undefined)?.['RESET_KEY'];
+      if (!RESET_KEY) return err('NOT_FOUND', 'Reset tidak tersedia', 404);
+      const key = query.get('key') ?? (body as Record<string, string>).key ?? '';
+      if (key !== RESET_KEY) return err('FORBIDDEN', 'Key salah', 403);
+      const SESSIONS = penv?.SESSIONS;
+      if (SESSIONS) {
+        const n = Number((await SESSIONS.get('rl:reset')) ?? 0);
+        if (n >= 5) return err('RATE_LIMITED', 'Reset max 5x per 10 menit', 429);
+        await SESSIONS.put('rl:reset', String(n + 1), { expirationTtl: 600 });
+      }
+      const mode = query.get('mode') === 'transaksi' ? 'transaksi' : 'full';
+      console.log(`[demo-reset] mode=${mode}`);
+      return ok(await resetDemo(DB, mode));
+    }
+  } catch (e) {
+    return dbErr(e);
+  }
+  return json(mockHandle(path, method, body));
+}
+
+const handler: RequestHandler = async ({ request, params, platform, url }) => {
   const path = `/${params.path ?? ''}`;
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
   const seg = path.split('?')[0].split('/').filter(Boolean);
   if (seg[0] === 'auth' && seg[1]) {
     return handleAuth(seg[1], body, platform?.env as Penv);
   }
-  return json(mockHandle(path, request.method, body));
+  return handleLive(path, request.method, body, url.searchParams, platform?.env as Penv);
 };
 
 export const GET = handler;

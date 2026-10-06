@@ -1,17 +1,37 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { page } from '$app/stores';
   import { ChevronLeft, CircleUserRound } from '@lucide/svelte';
   import ChatThread from '$lib/components/chat/ChatThread.svelte';
   import type { ChatMsg } from '$lib/components/chat/chat';
   import { loadMsgs, saveMsgs } from '$lib/chatStore';
-  import { requireAuth } from '$lib/guest';
+  import { api } from '$lib/api';
+  import { getSession, requireAuth } from '$lib/guest';
   $: id = $page.params.id ?? '1';
   const defaults: ChatMsg[] = [{ me: false, text: 'Baik pak, saya tunggu di lokasi jam 2 siang ya.', time: '10:30' }];
   let msgs: ChatMsg[] = loadMsgs(`buyer-${id}`, defaults);
+  let live = false;
+  onMount(async () => {
+    const uid = getSession()?.id;
+    if (!uid) return;
+    const r = await api.get<{ sender_id: string; sender: string; body: string; created_at: string }[]>(
+      `/messages?conversationId=${encodeURIComponent(id)}`);
+    if (r.ok) {
+      live = true;
+      msgs = r.data.map((m) => ({ me: m.sender_id === uid, text: m.body, time: String(m.created_at ?? '').slice(11, 16) }));
+    }
+  });
   function send(text: string) {
     requireAuth(() => {
-      msgs = [...msgs, { me: true, text, time: 'now' }];
-      saveMsgs(`buyer-${id}`, msgs);
+      const uid = getSession()?.id ?? 'u-mock';
+      if (live) {
+        void api.post('/messages', { conversationId: id, senderId: uid, body: text }).then((r) => {
+          if (r.ok) msgs = [...msgs, { me: true, text, time: 'now' }];
+        });
+      } else {
+        msgs = [...msgs, { me: true, text, time: 'now' }];
+        saveMsgs(`buyer-${id}`, msgs);
+      }
     }, `/app/chat/${id}`);
   }
 </script>

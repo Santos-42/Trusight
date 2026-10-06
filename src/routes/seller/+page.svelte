@@ -1,7 +1,18 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { BellRing, CircleUserRound } from '@lucide/svelte';
+  import { api } from '$lib/api';
+  import { getSession } from '$lib/guest';
   import { shareOrCopy } from '$lib/share';
   let msg = '';
+  type Req = { id: string; vehicle: string; buyer: string; status: string };
+  let incoming: Req[] = [];
+  onMount(async () => {
+    const uid = getSession()?.id;
+    if (!uid) return;
+    const r = await api.get<Req[]>(`/orders/incoming?sellerId=${encodeURIComponent(uid)}`);
+    if (r.ok && r.data.length) incoming = r.data;
+  });
 </script>
 <svelte:head><title>Seller — TruSight</title></svelte:head>
 <div class="grid gap-4">
@@ -22,11 +33,21 @@
       </div>
     </div>
     <div class="grid content-start gap-4">
-      <div class="rounded-[20px] border border-brand-200 bg-brand-100/50 p-5">
-        <p class="flex items-center gap-2 font-bold"><BellRing class="size-5" /> Ada Permintaan Inspeksi Baru!</p>
-        <p class="mt-1 text-[13px] text-slate-500">Calon pembeli 'Rian F.' mengajukan inspeksi TruSight untuk mobil Honda Civic Anda.</p>
-        <a href="/seller/schedule" class="btn-blue mt-3 w-full">Atur & Setujui Jadwal</a>
-      </div>
+      {#if incoming.length}
+        {#each incoming as q}
+          <div class="rounded-[20px] border border-brand-200 bg-brand-100/50 p-5">
+            <p class="flex items-center gap-2 font-bold"><BellRing class="size-5" /> Ada Permintaan Inspeksi Baru!</p>
+            <p class="mt-1 text-[13px] text-slate-500">Calon pembeli '{q.buyer}' mengajukan inspeksi TruSight untuk mobil {q.vehicle} Anda ({q.id}).</p>
+            <a href={`/seller/schedule?order=${encodeURIComponent(q.id)}`} class="btn-blue mt-3 w-full">Atur & Setujui Jadwal</a>
+          </div>
+        {/each}
+      {:else}
+        <div class="rounded-[20px] border border-brand-200 bg-brand-100/50 p-5">
+          <p class="flex items-center gap-2 font-bold"><BellRing class="size-5" /> Ada Permintaan Inspeksi Baru!</p>
+          <p class="mt-1 text-[13px] text-slate-500">Calon pembeli 'Rian F.' mengajukan inspeksi TruSight untuk mobil Honda Civic Anda.</p>
+          <a href="/seller/schedule" class="btn-blue mt-3 w-full">Atur & Setujui Jadwal</a>
+        </div>
+      {/if}
       <div class="rounded-[20px] bg-ink-900 p-5 text-white">
         <p class="font-bold">Naikkan Harga Jual Hingga 15%!</p>
         <p class="mt-1 text-[13px] text-white/70">Dapatkan lencana emas 'TruSight Certified' di listing Anda.</p>

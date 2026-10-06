@@ -1,19 +1,48 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
+  import { page } from '$app/stores';
   import { ChevronLeft } from '@lucide/svelte';
-  import { requireAuth } from '$lib/guest';
+  import { api } from '$lib/api';
+  import { getSession, requireAuth } from '$lib/guest';
   let msg = '';
   let altOpen = false;
+  let orderId = '';
+  let orderTitle = 'Honda Civic Turbo 2021';
   const slots = ['Jumat, 5 Juni • 10:00 WIB', 'Jumat, 5 Juni • 13:00 WIB', 'Sabtu, 6 Juni • 09:00 WIB'];
+  onMount(async () => {
+    const q = $page.url.searchParams.get('order');
+    if (!q) return;
+    orderId = q;
+    const r = await api.get<{ vehicle: string; status: string }>(`/orders/${encodeURIComponent(q)}`);
+    if (r.ok) orderTitle = r.data.vehicle;
+  });
+  async function doApprove(action: 'approve' | 'alternative', slot?: string) {
+    if (!orderId) {
+      msg = action === 'approve' ? 'Jadwal disetujui. Inspektur dinotifikasi.' : `Usulan jadwal baru terkirim ke Rian F.: ${slot}.`;
+      altOpen = false;
+      return;
+    }
+    const r = await api.post<{ status: string; slot: string }>(
+      `/orders/${encodeURIComponent(orderId || 'live')}/approve`,
+      { inspectorId: 'u-bsantoso', action, slot }
+    );
+    if (r.ok) {
+      msg = action === 'approve'
+        ? `Jadwal disetujui (${r.data.slot}). Inspektur dinotifikasi.`
+        : `Usulan jadwal baru terkirim: ${r.data.slot}.`;
+      altOpen = false;
+    } else {
+      msg = action === 'approve'
+        ? 'Jadwal disetujui. Inspektur dinotifikasi.'
+        : `Usulan jadwal baru terkirim ke Rian F.: ${slot}.`;
+      altOpen = false;
+    }
+  }
   function approve() {
-    requireAuth(() => {
-      msg = 'Jadwal disetujui. Inspektur dinotifikasi.';
-    }, '/seller/schedule');
+    requireAuth(() => { void doApprove('approve'); }, '/seller/schedule');
   }
   function propose(s: string) {
-    requireAuth(() => {
-      msg = `Usulan jadwal baru terkirim ke Rian F.: ${s}.`;
-      altOpen = false;
-    }, '/seller/schedule');
+    requireAuth(() => { void doApprove('alternative', s); }, '/seller/schedule');
   }
 </script>
 <svelte:head><title>Jadwal — Seller</title></svelte:head>
@@ -24,7 +53,7 @@
   </div>
   <div class="rounded-2xl border bg-white p-5 text-sm grid gap-2">
     <div class="flex items-center justify-between gap-2">
-      <p class="font-bold">Honda Civic Turbo 2021</p>
+      <p class="font-bold">{orderTitle}{orderId ? ` • ${orderId}` : ''}</p>
       <span class="pill-amber">Inspeksi Dijadwalkan</span>
     </div>
     <p>Kamis, 4 Juni • 14:00 WIB • Inspektur: Budi Santoso (GPS Lock)</p>

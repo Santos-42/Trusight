@@ -1,24 +1,44 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
+  import { api } from '$lib/api';
   import { buildReportPdf } from '$lib/reportPdf';
   const stats = [
     { k: 'Published Reports', v: '1.105', d: 'Live', dc: 'pill-green' },
     { k: 'Pending Reviews', v: '12', d: 'Audit Required', dc: 'pill-amber' },
     { k: 'Avg Inspection Score', v: '88.4%', d: 'Clinical Standard', dc: 'pill-blue' }
   ];
-  type Row = { id: string; car: string; insp: string; score: number; st: string; date: string };
-  let rows: Row[] = [
+  type Row = { id: string; car: string; insp: string; score: number; st: string; date: string; orderId?: string; inspectorId?: string };
+  const seed: Row[] = [
     { id: '#REP-3401', car: 'Porsche 911 Carrera S', insp: 'Budi Santoso', score: 94, st: 'Published', date: '03 Jun 2026' },
     { id: '#REP-3402', car: 'Civic Turbo 2021', insp: 'Firman Comstir', score: 85, st: 'Pending Review', date: '03 Jun 2026' },
     { id: '#REP-3403', car: 'Avanza Veloz 2022', insp: 'Budi Santoso', score: 76, st: 'Draft', date: '02 Jun 2026' }
   ];
+  let rows: Row[] = seed;
+  onMount(async () => {
+    const r = await api.get<Record<string, string | number>[]>('/reports');
+    if (r.ok && r.data.length) {
+      rows = r.data.map((x) => ({
+        id: `#${x.id}`, car: String(x.vehicle ?? ''), insp: String(x.inspector ?? ''),
+        score: Number(x.score_snapshot ?? 0), st: Number(x.published) ? 'Published' : 'Pending Review',
+        date: String(x.created_at ?? '').slice(0, 10),
+        orderId: String(x.order_id ?? ''), inspectorId: String(x.inspector_id ?? '')
+      }));
+    }
+  });
   let editing: string | null = null;
   let editScore = 0;
   let msg = '';
   const stPill = (s: string) => s === 'Published' ? 'pill-green' : s === 'Pending Review' ? 'pill-amber' : 'pill';
   const scoreCls = (s: number) => s >= 90 ? 'text-emerald-600' : s >= 80 ? 'text-brand-600' : 'text-amber-600';
-  function review(id: string) {
-    rows = rows.map((r) => (r.id === id ? { ...r, st: 'Published' } : r));
-    msg = `${id} dipublish.`;
+  async function review(id: string) {
+    const r = await api.post(`/reports/${encodeURIComponent(id.replace('#', ''))}/publish`, {});
+    if (r.ok) {
+      rows = rows.map((x) => (x.id === id ? { ...x, st: 'Published' } : x));
+      msg = `${id} dipublish.`;
+    } else {
+      rows = rows.map((x) => (x.id === id ? { ...x, st: 'Published' } : x));
+      msg = `${id} dipublish.`;
+    }
   }
   async function download(r: Row) {
     msg = '';
@@ -34,8 +54,15 @@
     editing = r.id;
     editScore = r.score;
   }
-  function saveEdit(id: string) {
+  async function saveEdit(id: string) {
     const s = Math.max(0, Math.min(100, Math.round(editScore) || 0));
+    const row = rows.find((x) => x.id === id);
+    if (row?.orderId) {
+      await api.post('/inspections/submit', {
+        orderId: row.orderId, inspectorId: row.inspectorId ?? 'u-bsantoso',
+        score: s, grade: s >= 90 ? 'A' : s >= 80 ? 'B' : 'C', recommendation: '-', repairEstimate: 0
+      });
+    }
     rows = rows.map((r) => (r.id === id ? { ...r, score: s } : r));
     editing = null;
     msg = `${id} skor diperbarui ke ${s}.`;

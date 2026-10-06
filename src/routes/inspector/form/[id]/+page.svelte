@@ -2,7 +2,7 @@
   import { page } from '$app/stores';
   import { X, Wrench, Car, Armchair } from '@lucide/svelte';
   import { api } from '$lib/api';
-  import { requireAuth } from '$lib/guest';
+  import { getSession, requireAuth } from '$lib/guest';
   import PhotoUpload from '$lib/components/inspector/PhotoUpload.svelte';
   import SignaturePad from '$lib/components/inspector/SignaturePad.svelte';
   $: id = $page.params.id;
@@ -25,8 +25,13 @@
     msg = '';
     if (!photos.length) { msg = 'Tambah minimal 1 foto lapangan dulu.'; return; }
     if (!signed) { msg = 'Bubuhkan TTD digital dulu.'; return; }
-    const r = await api.post(`/inspections/${id}/submit`, { score, grade, recommendation: reco, repair_estimate: 2000000, summary: 'Butuh perbaikan ringan' });
-    msg = r.ok ? 'Laporan diterbitkan + garansi 30 hari.' : r.error.message;
+    const r = await api.post<{ reportId: string }>('/inspections/submit', {
+      orderId: id, inspectorId: getSession()?.id ?? 'u-bsantoso', score, grade, recommendation: reco,
+      repairEstimate: 2000000,
+      items: rows.map((w) => ({ category: tab, key: w.label.toLowerCase().replace(/[^a-z]+/g, '_'), label: w.label, condition: w.st })),
+      photoKeys: photos
+    });
+    msg = r.ok ? `Laporan diterbitkan (${r.data.reportId}) + garansi 30 hari.` : r.error.message;
   }
   function submit() {
     requireAuth(() => void doSubmit(), `/inspector/form/${id}`);

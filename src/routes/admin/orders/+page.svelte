@@ -1,13 +1,29 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
+  import { api } from '$lib/api';
   const tabs = ['All Orders', 'Pending', 'Scheduled', 'In Progress', 'Verified', 'Failed'];
   let tab = 'All Orders';
-  let rows = [
+  type Row = { id: string; car: string; cust: string; sched: string; insp: string; st: string; pay: string };
+  const seed: Row[] = [
     { id: '#TS-9021', car: 'Toyota Camry 2020', cust: 'Rian Santoso', sched: '04 Jun, 10:00', insp: 'Budi Wijaya', st: 'Verified', pay: 'Paid' },
     { id: '#TS-9022', car: 'Honda Civic 2018', cust: 'Anita Putri', sched: '04 Jun, 14:00', insp: 'Dedi Setiadi', st: 'In Progress', pay: 'Paid' },
     { id: '#TS-9023', car: 'Mitsubishi Pajero 2021', cust: 'Farhan Aziz', sched: 'Pending', insp: 'Unassigned', st: 'Pending', pay: 'Unpaid' },
     { id: '#TS-9024', car: 'Suzuki Swift 2019', cust: 'Dian Pratama', sched: '05 Jun, 09:00', insp: 'Hendra Lesmana', st: 'Scheduled', pay: 'Paid' },
     { id: '#TS-9025', car: 'Hyundai Creta 2022', cust: 'Riko AJ', sched: '03 Jun, 11:00', insp: 'Budi Wijaya', st: 'Failed', pay: 'Refunded' }
   ];
+  let rows: Row[] = seed;
+  onMount(async () => {
+    const r = await api.get<Record<string, string>[]>('/orders');
+    if (r.ok && r.data.length) {
+      const map: Record<string, string> = { pending: 'Pending', scheduled: 'Scheduled', verified: 'Verified' };
+      const live: Row[] = r.data.map((o) => ({
+        id: `#${o.id}`, car: String(o.vehicle ?? ''), cust: String(o.buyer ?? ''),
+        sched: String(o.created_at ?? '').slice(0, 10), insp: '-',
+        st: map[String(o.status)] ?? String(o.status), pay: 'Paid'
+      }));
+      rows = [...live, ...seed];
+    }
+  });
   $: filtered = tab === 'All Orders' ? rows : rows.filter((r) => r.st === tab);
   function assign(id: string) {
     rows = rows.map((r) => (r.id === id ? { ...r, insp: 'Budi Santoso', sched: '06 Jun, 10:00', st: 'Scheduled', pay: 'Paid' } : r));

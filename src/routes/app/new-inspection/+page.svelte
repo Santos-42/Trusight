@@ -1,7 +1,7 @@
 <script lang="ts">
   import { ChevronLeft } from '@lucide/svelte';
   import { api } from '$lib/api';
-  import { requireAuth } from '$lib/guest';
+  import { getSession, requireAuth } from '$lib/guest';
   import { PRICING } from '$lib/config';
   import { rupiah } from '$lib/format';
   let vehicleId = 'civic-2021', type: 'standard' | 'fast-track' = 'fast-track', err = '', ok = '';
@@ -25,8 +25,12 @@
   }
   async function doSubmit() {
     err = ''; ok = '';
-    const r = await api.post<{ orderId: string; total: number }>('/orders', { vehicleId, type });
+    const r = await api.post<{ orderId: string; total: number; sellerId?: string }>('/orders', { vehicleId, type, buyerId: getSession()?.id ?? 'u-mock' });
     if (!r.ok) { err = r.error.message; return; }
+    const buyerId = getSession()?.id ?? 'u-mock';
+    if (r.data.sellerId) {
+      await api.post('/conversations', { orderId: r.data.orderId, buyerId, sellerId: r.data.sellerId });
+    }
     location.href = `/app/checkout/${r.data.orderId.replace('#', '')}`;
   }
   function submit() {

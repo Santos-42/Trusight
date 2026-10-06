@@ -2,9 +2,16 @@
   import { page } from '$app/stores';
   import { ChevronLeft, Clock, MapPin } from '@lucide/svelte';
   import OsmMap from '$lib/components/inspector/OsmMap.svelte';
+  import { api } from '$lib/api';
+  import { getSession } from '$lib/guest';
   import { withinRadius } from '$lib/gps';
   import { reverseGeocode } from '$lib/geocode';
   $: id = $page.params.id;
+  let checkinSent = false;
+  $: if (canOpen && id && !checkinSent) {
+    checkinSent = true;
+    void api.post('/inspections/checkin', { orderId: id, inspectorId: getSession()?.id ?? 'u-bsantoso', lat: CAR.lat, lng: CAR.lng, valid: true });
+  }
   const CAR = { lat: -6.2581, lng: 106.8451 };
   let msg = 'Tombol check-in aktif hanya dalam radius 50 m dari mobil.';
   let addr = 'Apartemen Kalibata City Tower Jasmine';

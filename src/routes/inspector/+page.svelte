@@ -1,9 +1,22 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { CircleUserRound, Clock, MapPin, Star } from '@lucide/svelte';
-  const jobs = [
+  import { api } from '$lib/api';
+  import { getSession } from '$lib/guest';
+  type Job = { id: string; title: string; time: string; loc: string };
+  const seed: Job[] = [
     { id: 'insp-1', title: 'Honda Civic Turbo 2021', time: '14:00 - 15:30 WIB', loc: 'Kalibata, Jakarta Selatan (3.2 km)' },
     { id: 'insp-2', title: 'Toyota Avanza Veloz 2022', time: '16:00 - 17:30 WIB', loc: 'Tebet, Jakarta Selatan (5.1 km)' }
   ];
+  let jobs: Job[] = seed;
+  onMount(async () => {
+    const uid = getSession()?.id;
+    if (!uid) return;
+    const r = await api.get<{ id: string; vehicle: string; location: string }[]>(`/orders/assigned?inspectorId=${encodeURIComponent(uid)}`);
+    if (r.ok && r.data.length) {
+      jobs = r.data.map((o) => ({ id: o.id, title: o.vehicle, time: 'Terjadwal', loc: o.location ?? '' }));
+    }
+  });
 </script>
 <svelte:head><title>Inspector — TruSight</title></svelte:head>
 <div class="grid gap-4 sm:grid-cols-[repeat(auto-fill,minmax(300px,1fr))]">

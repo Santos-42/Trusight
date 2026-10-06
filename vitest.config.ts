@@ -7,6 +7,7 @@ export default defineConfig({
   resolve: {
     alias: {
       $lib: path.resolve('./src/lib'),
+      $routes: path.resolve('./src/routes'),
       '$app/environment': path.resolve('./tests/stub/app-environment.ts')
     }
   },
