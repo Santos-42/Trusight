@@ -6,10 +6,11 @@
     location.href = '/';
   }
   const rows = [
-    { icon: Building2, label: 'Informasi Kontak & Showroom' },
-    { icon: Landmark, label: 'Rekening Bank & Penarikan' },
-    { icon: ScrollText, label: 'Syarat & Ketentuan' }
+    { icon: Building2, label: 'Informasi Kontak & Showroom', href: '' },
+    { icon: Landmark, label: 'Rekening Bank & Penarikan', href: '/seller/withdraw' },
+    { icon: ScrollText, label: 'Syarat & Ketentuan', href: '' }
   ];
+  let msg = '';
 </script>
 <svelte:head><title>Profil Penjual — TruSight</title></svelte:head>
 <div class="mx-auto grid max-w-md gap-4 px-1 pb-6 lg:max-w-2xl">
@@ -25,12 +26,21 @@
   </div>
   <div class="ts-card divide-y divide-slate-100 !p-0">
     {#each rows as r}
-      <button class="flex w-full items-center gap-3 p-4 text-left text-sm font-semibold">
-        <svelte:component this={r.icon} class="size-5 text-slate-400" />
-        <span class="flex-1">{r.label}</span>
-        <ChevronRight class="size-4 text-slate-300" />
-      </button>
+      {#if r.href}
+        <a href={r.href} class="flex w-full items-center gap-3 p-4 text-left text-sm font-semibold">
+          <svelte:component this={r.icon} class="size-5 text-slate-400" />
+          <span class="flex-1">{r.label}</span>
+          <ChevronRight class="size-4 text-slate-300" />
+        </a>
+      {:else}
+        <button class="flex w-full items-center gap-3 p-4 text-left text-sm font-semibold" on:click={() => (msg = `${r.label} segera hadir.`)}>
+          <svelte:component this={r.icon} class="size-5 text-slate-400" />
+          <span class="flex-1">{r.label}</span>
+          <ChevronRight class="size-4 text-slate-300" />
+        </button>
+      {/if}
     {/each}
   </div>
+  {#if msg}<p class="text-sm text-slate-500">{msg}</p>{/if}
   <button class="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-red-600 px-6 text-sm font-bold text-white hover:bg-red-700" on:click={logout}><LogOut class="size-4" /> Logout</button>
 </div>

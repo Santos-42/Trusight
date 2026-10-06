@@ -15,7 +15,7 @@ export async function buildReportPdf(opts: {
   const draw = (text: string, x: number, y: number, size = 12, bold = false) =>
     page.drawText(text, { x, y, size, font: bold ? font : body, color: rgb(0.1, 0.15, 0.3) });
 
-  draw('TRUSIGHT — VERIFICATION REPORT (MOCKUP)', 50, 790, 13, true);
+  draw('TRUSIGHT — VERIFICATION REPORT', 50, 790, 13, true);
   draw(`Report: ${opts.reportId}`, 50, 762);
   draw(`Vehicle: ${opts.vehicle}`, 50, 744);
   draw(`Score: ${opts.score} / Grade: ${opts.grade}`, 50, 726);

@@ -11,6 +11,8 @@
   $: path = $page.url.pathname;
   $: isApp = path.startsWith('/app') || path.startsWith('/seller') || path.startsWith('/inspector') || path.startsWith('/admin');
   $: role = $roleStore;
+  /* Thread chat: BottomNav mobile disembunyikan (ala Figma), input chat mentok bawah. */
+  $: isChat = path.startsWith('/app/chat/') || /^\/inspector\/messages\/.+/.test(path);
 
   onMount(() => syncSession());
 </script>
@@ -23,11 +25,11 @@
       <Rail {role} />
     </div>
   {/if}
-  <main class="min-w-0 flex-1 px-4 pt-4 sm:px-6 lg:px-8 lg:pt-6 {isApp ? 'pb-24 lg:pb-10' : 'pb-4 lg:pb-6'}">
+  <main class="min-w-0 flex-1 px-4 pt-4 sm:px-6 lg:px-8 lg:pt-6 {isApp ? (isChat ? 'pb-4' : 'pb-24 lg:pb-10') : 'pb-4 lg:pb-6'}">
     {#if isApp}<GuestStrip />{/if}
     <slot />
   </main>
-  {#if isApp}
+  {#if isApp && !isChat}
     <div class="lg:hidden">
       <BottomNav {role} />
     </div>

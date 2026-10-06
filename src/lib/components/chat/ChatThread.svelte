@@ -24,7 +24,7 @@
 </script>
 
 <!-- Kolom chat setinggi viewport: header + input diam, hanya daftar pesan yang scroll. -->
-<div class="flex h-[calc(100dvh-7rem)] flex-col lg:h-[calc(100dvh-4.5rem)]">
+<div class="flex h-[calc(100dvh-2rem)] flex-col lg:h-[calc(100dvh-4.5rem)]">
   <div class="shrink-0 pb-2"><slot name="header" /></div>
   <div bind:this={box} class="flex min-h-0 flex-1 flex-col overflow-y-auto">
     <div class="mt-auto grid gap-2 py-1">
@@ -33,7 +33,7 @@
         {#if m.me}
           <div class="max-w-[85%] justify-self-end rounded-2xl rounded-tr-md bg-brand-600 p-3 text-[13px] text-white">
             {m.text}
-            {#if m.time}<p class="mt-1 text-right text-[11px] text-brand-100">{m.time} ✓✓</p>{/if}
+            {#if m.time}<p class="mt-1 text-right text-[11px] text-brand-100">{m.time} <b class="font-extrabold text-sky-200">✓✓</b></p>{/if}
           </div>
         {:else}
           <div class="max-w-[85%] justify-self-start rounded-2xl rounded-tl-md bg-white p-3 text-[13px] shadow-sm ring-1 ring-slate-100">

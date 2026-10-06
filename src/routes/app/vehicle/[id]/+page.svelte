@@ -34,10 +34,10 @@
       <div class="ts-card"><p class="ts-eyebrow">Transmission</p><p class="mt-1 font-bold">Manual</p><Cog class="mt-2 size-6 text-brand-600" /></div>
       <div class="ts-card"><p class="ts-eyebrow">Fuel Type</p><p class="mt-1 font-bold">Gas</p><Fuel class="mt-2 size-6 text-brand-600" /></div>
     </div>
-    <div class="ts-card flex items-center justify-between">
+    <a class="ts-card flex items-center justify-between" href="https://www.google.com/maps/search/?api=1&query={encodeURIComponent(v.location)}" target="_blank" rel="noreferrer" title="Buka di Google Maps">
       <div><p class="ts-eyebrow">Location</p><p class="mt-1 font-bold">{v.location}</p><p class="text-[11px] text-slate-400">{v.year} MODEL • {km(v.mileage).toUpperCase()}</p></div>
       <MapPin class="size-7 text-brand-600" />
-    </div>
+    </a>
   </div>
 
   <div class="grid content-start gap-4">

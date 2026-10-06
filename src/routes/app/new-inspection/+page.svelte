@@ -5,11 +5,29 @@
   import { PRICING } from '$lib/config';
   import { rupiah } from '$lib/format';
   let vehicleId = 'civic-2021', type: 'standard' | 'fast-track' = 'fast-track', err = '', ok = '';
+  let link = '', linkMsg = '', linkOk = false, checking = false;
+  function checkLink() {
+    if (!link.trim() || checking) return;
+    checking = true;
+    linkOk = false;
+    linkMsg = 'Link sedang di check…';
+    const url = link.trim();
+    setTimeout(() => {
+      checking = false;
+      const known = /olx\.co\.id|mobil123|carmudi|mobilbekas|carsome|momobil/i.test(url);
+      if (/^https?:\/\//i.test(url) && (known || /mobil/i.test(url))) {
+        linkOk = true;
+        linkMsg = 'Link valid — listing mobil bekas terdeteksi. Pilih kendaraan di atas lalu Buat Order.';
+      } else {
+        linkMsg = 'Link tidak dikenali sebagai listing mobil bekas. Periksa kembali tautannya.';
+      }
+    }, 1200);
+  }
   async function doSubmit() {
     err = ''; ok = '';
     const r = await api.post<{ orderId: string; total: number }>('/orders', { vehicleId, type });
     if (!r.ok) { err = r.error.message; return; }
-    ok = `Order ${r.data.orderId} dibuat (${rupiah(r.data.total)}). Lanjut ke checkout.`;
+    location.href = `/app/checkout/${r.data.orderId.replace('#', '')}`;
   }
   function submit() {
     requireAuth(() => void doSubmit(), '/app/new-inspection');
@@ -41,6 +59,14 @@
       {#if err}<p class="text-sm text-red-600">{err}</p>{/if}
       {#if ok}<p class="text-sm text-emerald-700">{ok}</p>{/if}
       <button class="btn-blue w-full" on:click={submit}>Buat Order</button>
+      <div class="border-t border-slate-100 pt-3">
+        <p class="text-sm font-bold">…atau tempel link mobil bekas</p>
+        <div class="mt-2 flex gap-2">
+          <input bind:value={link} placeholder="https://olx.co.id/…" class="ts-field flex-1" aria-label="Link mobil bekas" />
+          <button class="shrink-0 rounded-xl bg-ink-900 px-4 text-sm font-bold text-white disabled:opacity-50" disabled={checking} on:click={checkLink}>{checking ? 'Checking…' : 'Check'}</button>
+        </div>
+        {#if linkMsg}<p class="mt-2 text-[13px] {linkOk ? 'text-emerald-700' : 'text-slate-500'}">{linkMsg}</p>{/if}
+      </div>
     </div>
   </div>
 </div>

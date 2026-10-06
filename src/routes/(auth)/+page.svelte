@@ -32,11 +32,18 @@
 
   <div class="flex min-h-0 flex-1 flex-col items-center justify-center py-6 lg:py-3" role="region" aria-roledescription="carousel" aria-label="Intro TruSight" on:touchstart={onTouchStart} on:touchend={onTouchEnd}>
     <div class="flex w-full items-center justify-between gap-2">
-      <button class="ts-back shrink-0" on:click={prev} aria-label="Slide sebelumnya"><ChevronLeft class="size-5" /></button>
-      <div class="relative flex items-end justify-center gap-2">
-        <img src="/hero-inspection.jpg" alt="Ilustrasi inspeksi mobil TruSight" class="size-36 rounded-[28px] object-cover shadow-[0_12px_40px_rgba(28,35,43,0.28)] ring-1 ring-ink-900/10 lg:size-40" />
+      <button class="ts-back z-10 shrink-0" on:click={prev} aria-label="Slide sebelumnya"><ChevronLeft class="size-5" /></button>
+      <div class="min-w-0 flex-1 overflow-hidden" role="region" aria-roledescription="carousel" aria-label="Intro TruSight" on:touchstart={onTouchStart} on:touchend={onTouchEnd}>
+        <div class="flex w-[200%] transition-transform duration-500 ease-out" style="transform: translateX(-{i * 50}%)">
+          <div class="flex w-1/2 items-center justify-center">
+            <img src="/hero-car.png" alt="Ilustrasi mobil yang diverifikasi TruSight" class="h-36 w-auto rounded-[28px] object-contain lg:h-40" />
+          </div>
+          <div class="flex w-1/2 items-center justify-center">
+            <img src="/hero-person.png" alt="Ilustrasi verifikator TruSight" class="h-36 w-auto rounded-[28px] object-contain lg:h-40" />
+          </div>
+        </div>
       </div>
-      <button class="ts-back shrink-0" on:click={next} aria-label="Slide berikutnya"><ChevronRight class="size-5" /></button>
+      <button class="ts-back z-10 shrink-0" on:click={next} aria-label="Slide berikutnya"><ChevronRight class="size-5" /></button>
     </div>
     <div class="mt-6 flex gap-1.5">
       {#each [0, 1] as n}
