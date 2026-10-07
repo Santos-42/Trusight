@@ -1,34 +1,39 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { ChevronLeft, CircleUserRound } from '@lucide/svelte';
+  import { ChevronLeft } from '@lucide/svelte';
+  import ThreadList from '$lib/components/chat/ThreadList.svelte';
   import { api } from '$lib/api';
   import { getSession } from '$lib/guest';
   import { sortThreads } from '$lib/chatStore';
-  type Thread = { id: string; n: string; t: string };
+  type Thread = { id: string; name: string; snippet: string; with: ('a' | 'b')[]; nameA?: string; nameB?: string };
+  // Tab A = Pembeli, Tab B = Inspektur
   let threads: Thread[] = [];
   onMount(async () => {
     const uid = getSession()?.id;
     if (!uid) return;
-    const r = await api.get<{ id: string; order_id: string; last_msg?: string }[]>(`/conversations?userId=${encodeURIComponent(uid)}`);
+    const r = await api.get<{
+      id: string; order_id: string; last_msg?: string;
+      buyer_name?: string | null; inspector_name?: string | null;
+    }[]>(`/conversations?userId=${encodeURIComponent(uid)}`);
     if (r.ok) {
-      threads = sortThreads(r.data.map((c) => ({ id: c.id, n: `Order ${c.order_id}`, t: c.last_msg ?? 'Belum ada pesan' })));
+      const mapped: Thread[] = r.data.map((c) => {
+        const with_ = ([] as ('a' | 'b')[]).concat(c.buyer_name ? ['a'] : [], c.inspector_name ? ['b'] : []);
+        return {
+          id: c.id, name: c.buyer_name ?? c.inspector_name ?? `Order ${c.order_id}`,
+          snippet: c.last_msg ?? 'Belum ada pesan', with: with_.length ? with_ : ['a'],
+          nameA: c.buyer_name ?? 'Pembeli', nameB: c.inspector_name ?? 'Belum ada inspektur'
+        };
+      });
+      threads = sortThreads(mapped);
     }
   });
 </script>
 <svelte:head><title>Pesan Masuk — Seller</title></svelte:head>
-<div class="mx-auto grid max-w-md gap-3 lg:max-w-2xl">
-  <div class="ts-appbar-flush">
+<div class="grid gap-3">
+  <div class="flex items-center gap-3">
     <a href="/seller" class="ts-back" aria-label="Kembali"><ChevronLeft class="size-5" /></a>
-    <p class="ts-appbar-title">Pesan Masuk</p>
+    <h1 class="text-xl font-extrabold">Pesan Masuk</h1>
   </div>
-  {#if !threads.length}
-    <div class="ts-card text-center">
-      <p class="font-bold">Belum ada percakapan</p>
-      <p class="text-sm text-slate-500">Chat dengan calon pembeli muncul di sini setelah ada order.</p>
-    </div>
-  {:else}
-    {#each threads as m}
-      <a href={`/seller/messages/${m.id}`} class="flex items-center gap-3 rounded-2xl border bg-white p-4"><CircleUserRound class="size-10 shrink-0 text-slate-300" /><span><p class="text-sm font-bold">{m.n}</p><p class="text-xs text-slate-500">{m.t}</p></span></a>
-    {/each}
-  {/if}
+  <ThreadList {threads} tabA="Pembeli" tabB="Inspektur" base="/seller/messages"
+    emptyHint="Percakapan dengan pihak ini akan muncul di sini." />
 </div>

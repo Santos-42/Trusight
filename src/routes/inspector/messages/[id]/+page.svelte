@@ -6,7 +6,7 @@
   import type { ChatMsg } from '$lib/components/chat/chat';
   import { api } from '$lib/api';
   import { getSession, requireAuth } from '$lib/guest';
-  import { bumpThread } from '$lib/chatStore';
+  import { bumpThread, loadMsgs, saveMsgs } from '$lib/chatStore';
   $: id = $page.params.id ?? '1';
   const peers: Record<string, { n: string; s: string }> = {
     '1': { n: 'Firman Comstir', s: 'EXPERT VERIFIER' },
@@ -22,7 +22,8 @@
     '2': [{ me: false, text: 'Baik pak, saya tunggu di lokasi jam 2 siang ya.', time: '10:30' }]
   };
   $: peer = peers[id] ?? peers['1'];
-  let msgs: ChatMsg[] = defaults[id] ?? defaults['1'];
+  // Riwayat selalu persist lokal — tidak hilang walau keluar obrolan
+  let msgs: ChatMsg[] = loadMsgs(`insp-${id}`, defaults[id] ?? defaults['1']);
   let live = false;
   onMount(async () => {
     const uid = getSession()?.id;
@@ -32,6 +33,7 @@
     if (r.ok && r.data.length) {
       live = true;
       msgs = r.data.map((m) => ({ me: m.sender_id === uid, text: m.body, time: String(m.created_at ?? '').slice(11, 16) }));
+      saveMsgs(`insp-${id}`, msgs);
     }
   });
   async function send(text: string) {
@@ -39,10 +41,14 @@
       const uid = getSession()?.id ?? 'u-bsantoso';
       const optimistic: ChatMsg = { me: true, text, time: 'now' };
       msgs = [...msgs, optimistic];
+      saveMsgs(`insp-${id}`, msgs);
       bumpThread(id);
       if (!live) return;
       const r = await api.post('/messages', { conversationId: id, senderId: uid, body: text });
-      if (!r.ok) msgs = [...msgs.filter((m) => m !== optimistic), { ...optimistic, time: 'gagal, coba lagi' }];
+      if (!r.ok) {
+        msgs = [...msgs.filter((m) => m !== optimistic), { ...optimistic, time: 'gagal, coba lagi' }];
+        saveMsgs(`insp-${id}`, msgs);
+      }
     }, `/inspector/messages/${id}`);
   }
 </script>

@@ -96,6 +96,9 @@ describe('voucher DB', () => {
     await approveOrder(db, { orderId: o.orderId, inspectorId: 'u-bsantoso', action: 'approve', slot: 'Kamis' });
     const convs = await listConversations(db, 'u-bsantoso');
     expect(convs).toHaveLength(1);
+    // Nama lawan bicara ikut terbawa untuk filter inbox per-peran
+    expect((convs[0] as { buyer_name: string }).buyer_name).toBe('Budi Perkasa');
+    expect((convs[0] as { seller_name: string }).seller_name).toBe('Hendra Wijaya');
     await expect(postMessage(db, { conversationId: 'conv-tak-ada', senderId: 'u-budi', body: 'halo' }))
       .rejects.toThrow('Percakapan tidak ditemukan');
   });

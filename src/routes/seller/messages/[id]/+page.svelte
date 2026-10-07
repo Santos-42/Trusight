@@ -6,9 +6,9 @@
   import type { ChatMsg } from '$lib/components/chat/chat';
   import { api } from '$lib/api';
   import { getSession, requireAuth } from '$lib/guest';
-  import { bumpThread } from '$lib/chatStore';
+  import { bumpThread, loadMsgs, saveMsgs } from '$lib/chatStore';
   $: id = $page.params.id ?? '';
-  let msgs: ChatMsg[] = [];
+  let msgs: ChatMsg[] = loadMsgs(`seller-${id}`, []);
   let loading = true;
   let peer = 'Calon Pembeli';
   onMount(async () => {
@@ -29,6 +29,7 @@
     if (r.ok) {
       const myId = getSession()?.id;
       msgs = r.data.map((m) => ({ me: m.sender_id === myId, text: m.body, time: String(m.created_at ?? '').slice(11, 16) }));
+      saveMsgs(`seller-${id}`, msgs);
     }
   });
   async function send(text: string) {
@@ -36,9 +37,13 @@
       const uid = getSession()?.id ?? 'u-hendra';
       const optimistic: ChatMsg = { me: true, text, time: 'now' };
       msgs = [...msgs, optimistic];
+      saveMsgs(`seller-${id}`, msgs);
       bumpThread(id);
       const r = await api.post('/messages', { conversationId: id, senderId: uid, body: text });
-      if (!r.ok) msgs = [...msgs.filter((m) => m !== optimistic), { ...optimistic, time: 'gagal, coba lagi' }];
+      if (!r.ok) {
+        msgs = [...msgs.filter((m) => m !== optimistic), { ...optimistic, time: 'gagal, coba lagi' }];
+        saveMsgs(`seller-${id}`, msgs);
+      }
     }, `/seller/messages/${id}`);
   }
 </script>

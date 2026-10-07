@@ -151,8 +151,10 @@ export async function ensureConversation(db: Db, b: { orderId: string; buyerId: 
 }
 
 export function listConversations(db: Db, userId: string) {
-  return qAll(db, `SELECT c.*, (SELECT body FROM messages WHERE conversation_id=c.id ORDER BY rowid DESC LIMIT 1) AS last_msg
-    FROM conversations c WHERE c.buyer_id=? OR c.seller_id=? OR c.inspector_id=? ORDER BY c.order_id DESC`,
+  return qAll(db, `SELECT c.*, (SELECT body FROM messages WHERE conversation_id=c.id ORDER BY rowid DESC LIMIT 1) AS last_msg,
+      ub.name AS buyer_name, us.name AS seller_name, ui.name AS inspector_name
+    FROM conversations c LEFT JOIN users ub ON ub.id=c.buyer_id LEFT JOIN users us ON us.id=c.seller_id LEFT JOIN users ui ON ui.id=c.inspector_id
+    WHERE c.buyer_id=? OR c.seller_id=? OR c.inspector_id=? ORDER BY c.order_id DESC`,
     userId, userId, userId);
 }
 
