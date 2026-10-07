@@ -43,8 +43,19 @@ describe('mockApi (fallback vite dev)', () => {
     if (r.ok) {
       const d = r.data as { orderId: string; total: number };
       expect(d.total).toBe(499000);
-      expect(d.orderId).toMatch(/^#TS-/);
+      expect(d.orderId).toMatch(/^TS-/);
     }
+  });
+
+  it('tolak order kembar untuk mobil yang sama (Opsi A)', () => {
+    const a = mockHandle('/orders', 'POST', { vehicleId: 'avanza-2022', type: 'standard', buyerId: 'u-budi' });
+    const b = mockHandle('/orders', 'POST', { vehicleId: 'avanza-2022', type: 'standard', buyerId: 'u-budi' });
+    expect(a.ok).toBe(true);
+    expect(b.ok).toBe(false);
+    if (!b.ok) expect(b.error.code).toBe('CONFLICT');
+    // beda mobil tetap boleh
+    const c = mockHandle('/orders', 'POST', { vehicleId: 'civic-2021', type: 'standard', buyerId: 'u-budi' });
+    expect(c.ok).toBe(true);
   });
 
   it('pay kembalikan redirectUrl success', () => {

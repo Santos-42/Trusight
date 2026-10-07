@@ -40,6 +40,21 @@ describe('alur order lintas role', () => {
     expect(full).toMatchObject({ status: 'scheduled', seller: 'Hendra Wijaya' });
   });
 
+  it('Opsi A: tolak order kembar mobil yang sama selama masih aktif', async () => {
+    const db = memDb(SEED);
+    const a = await createOrder(db, { vehicleId: 'civic-2021', type: 'standard', buyerId: 'u-budi' });
+    // masih aktif (pending) -> tolak
+    await expect(createOrder(db, { vehicleId: 'civic-2021', type: 'fast-track', buyerId: 'u-budi' }))
+      .rejects.toMatchObject({ code: 'CONFLICT' });
+    // pembeli lain untuk mobil yang sama tetap boleh
+    const c = await createOrder(db, { vehicleId: 'civic-2021', type: 'standard', buyerId: 'u-buyer-lain' });
+    expect(c.status).toBe('pending');
+    // setelah selesai (verified) -> boleh order lagi (inspeksi ulang)
+    await db.prepare('UPDATE orders SET status=? WHERE id=?').bind('verified', a.orderId).run();
+    const again = await createOrder(db, { vehicleId: 'civic-2021', type: 'standard', buyerId: 'u-budi' });
+    expect(again.status).toBe('pending');
+  });
+
   it('checkin → submit → report → publish', async () => {
     const db = memDb(SEED);
     const o = await createOrder(db, { vehicleId: 'civic-2021', type: 'standard', buyerId: 'u-budi' });

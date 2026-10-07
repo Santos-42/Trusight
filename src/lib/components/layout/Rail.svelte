@@ -4,7 +4,18 @@
   import type { Component } from 'svelte';
   import { House, Plus, Mail, FileText, User, CalendarDays, Car, ClipboardCheck, LayoutDashboard, MessageSquare, Search, Award, Users, LogOut } from '@lucide/svelte';
   import { authed, clearSession, loginModal } from '$lib/guest';
+  import { api } from '$lib/api';
+  import { getSession } from '$lib/guest';
+  import { onMount } from 'svelte';
   $: path = $page.url.pathname;
+  let pendingCount = 0;
+  onMount(async () => {
+    if (role !== 'seller') return;
+    const uid = getSession()?.id;
+    if (!uid) return;
+    const r = await api.get<{ status: string }[]>(`/orders/incoming?sellerId=${encodeURIComponent(uid)}`);
+    if (r.ok) pendingCount = r.data.filter((o) => o.status === 'pending').length;
+  });
 
   const sets: Record<string, { href: string; label: string; icon: Component<any> }[]> = {
     buyer: [
@@ -52,7 +63,10 @@
     <img src="/logo.png" alt="TruSight" class="h-7 w-auto brightness-0 invert" />
   </a>
   {#each sets[role] as m}
-    <a href={m.href} class="flex w-[68px] flex-col items-center gap-1 rounded-2xl px-1 py-2.5 text-center text-[10px] font-semibold leading-tight {path === m.href ? 'bg-white/12 text-white' : 'text-white/55 hover:bg-white/5 hover:text-white'}">
+    <a href={m.href} class="relative flex w-[68px] flex-col items-center gap-1 rounded-2xl px-1 py-2.5 text-center text-[10px] font-semibold leading-tight {path === m.href ? 'bg-white/12 text-white' : 'text-white/55 hover:bg-white/5 hover:text-white'}">
+      {#if m.href === '/seller/schedule' && pendingCount}
+        <span class="absolute right-0 top-1 grid size-4 min-w-[16px] place-items-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">{pendingCount}</span>
+      {/if}
       <svelte:component this={m.icon} class="size-5" />
       {m.label}
     </a>

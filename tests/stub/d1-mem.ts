@@ -33,6 +33,12 @@ export function memDb(seed: Seed = {}): Db {
   function evalWhere(row: Row, cond: string, params: unknown[]): boolean {
     return splitTop(cond, 'OR').some((orPart) =>
       splitTop(orPart, 'AND').every((part) => {
+        // col IN ('a','b',...) — daftar literal
+        const inM = part.trim().match(/(?:(\w+)\.)?(\w+)\s+IN\s+\(([^)]+)\)/i);
+        if (inM) {
+          const list = inM[3].split(',').map((s) => s.trim().replace(/^'|'$/g, ''));
+          return list.includes(String(row[inM[2]]));
+        }
         const m = part.trim().match(/(?:(\w+)\.)?(\w+)\s*=\s*(?:__P(\d+)__|'(.*)'|(\w+)\.(\w+))/);
         if (!m) return true;
         const [, , col, pi, lit, jt, jc] = m;

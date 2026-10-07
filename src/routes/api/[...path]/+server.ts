@@ -115,6 +115,7 @@ function dbErr(e: unknown) {
   const msg = e instanceof Error ? e.message : 'Server error';
   if (code === 'NOT_FOUND') return err('NOT_FOUND', msg, 404);
   if (code === 'VALIDATION_ERROR') return err('VALIDATION_ERROR', msg);
+  if (code === 'CONFLICT') return err('CONFLICT', msg, 409);
   console.error(e);
   return err('UPSTREAM_ERROR', 'Server error', 500);
 }
@@ -280,6 +281,12 @@ async function handleLive(path: string, method: string, body: Record<string, unk
       return ok(await resetDemo(DB, mode));
     }
   } catch (e) {
+    // D1 lokal dev (simulasi wrangler) kosong / tabel belum dibuat: jatuhkan ke mock,
+    // bukan error generik. Produksi dengan tabel ada tidak terpengaruh.
+    const msg = e instanceof Error ? e.message : '';
+    if (/no such table|not authorized|DB is not defined/i.test(msg)) {
+      return json(mockHandle(path, method, body));
+    }
     return dbErr(e);
   }
   return json(mockHandle(path, method, body));

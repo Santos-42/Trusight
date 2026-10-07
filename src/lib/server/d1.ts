@@ -27,6 +27,16 @@ export interface OrderInput { vehicleId: string; type: string; buyerId: string }
 export async function createOrder(db: Db, b: OrderInput) {
   const v = await qOne<{ price: number; seller_id: string }>(db, 'SELECT price, seller_id FROM vehicles WHERE id=?', b.vehicleId);
   if (!v) throw Object.assign(new Error('Kendaraan tidak ditemukan'), { code: 'NOT_FOUND' });
+  // Opsi A: tolak bila buyer masih punya pesanan aktif untuk kendaraan yang sama.
+  const active = await qOne<{ id: string }>(db,
+    `SELECT id FROM orders WHERE buyer_id=? AND vehicle_id=? AND status IN ('pending','scheduled','in_progress') LIMIT 1`,
+    b.buyerId, b.vehicleId);
+  if (active) {
+    throw Object.assign(
+      new Error(`Anda masih memiliki pesanan aktif (${active.id}) untuk mobil ini. Selesaikan atau batalkan dulu sebelum order baru.`),
+      { code: 'CONFLICT' }
+    );
+  }
   const type = b.type === 'fast-track' ? 'fast-track' : 'standard';
   const id = `TS-${num5()}`;
   await exec(db, 'INSERT INTO orders (id, buyer_id, vehicle_id, type, status, total) VALUES (?,?,?,?,?,?)',
@@ -55,12 +65,17 @@ export function listOrders(db: Db, f: OrderFilter) {
   return qAll(db, sql, ...p);
 }
 
-export function getOrder(db: Db, id: string) {
-  return qOne(db, `SELECT o.*, v.title AS vehicle, v.location, v.price, v.year,
+export async function getOrder(db: Db, id: string): Promise<Record<string, unknown> | null> {
+  const o = await qOne(db, `SELECT o.*, v.title AS vehicle, v.location, v.price, v.year,
     ub.name AS buyer, us.name AS seller
     FROM orders o JOIN vehicles v ON v.id=o.vehicle_id
     LEFT JOIN users ub ON ub.id=o.buyer_id LEFT JOIN users us ON us.id=v.seller_id
     WHERE o.id=?`, id);
+  if (!o) return null;
+  const schedule = await qOne(db, `SELECT s.datetime, s.status, u.name AS inspector
+    FROM schedules s LEFT JOIN users u ON u.id=s.inspector_id
+    WHERE s.order_id=? ORDER BY s.rowid DESC LIMIT 1`, id);
+  return { ...(o as Record<string, unknown>), schedule: schedule ?? null };
 }
 
 export interface ApproveInput { orderId: string; inspectorId: string; action: 'approve' | 'alternative'; slot?: string }
