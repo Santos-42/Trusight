@@ -27,7 +27,7 @@
       <div class="ts-card grid gap-2 text-sm">
         <p class="ts-eyebrow">Administrator</p>
         <p><b>Role:</b> Chief Admin • <b>Email:</b> {email || 'admin@trusight.id'}</p>
-        <p class="text-slate-500">Kelola order, inspektur, dan laporan lewat Rail di sisi kiri.</p>
+        <p class="text-slate-500">Kelola order, inspektor, dan laporan lewat Rail di sisi kiri.</p>
       </div>
     {:else if role === 'seller'}
       <h1 class="text-xl font-extrabold">Account Settings • Hendra Wijaya</h1>

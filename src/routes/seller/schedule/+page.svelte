@@ -60,14 +60,14 @@
     );
     if (r.ok) {
       msg[id] = action === 'approve'
-        ? `Jadwal disetujui (${r.data.slot}). Inspektur dinotifikasi.`
+        ? `Jadwal disetujui (${r.data.slot}). Inspektor dinotifikasi.`
         : `Usulan jadwal baru terkirim ke pembeli: ${r.data.slot}.`;
       rows = rows.map((x) => (x.id === id
         ? { ...x, status: action === 'approve' ? 'scheduled' : x.status, slot: r.data.slot, inspector: 'Budi Santoso' }
         : x));
       openId = null;
     } else {
-      msg[id] = action === 'approve' ? 'Jadwal disetujui. Inspektur dinotifikasi.' : `Usulan jadwal baru terkirim: ${slot}.`;
+      msg[id] = action === 'approve' ? 'Jadwal disetujui. Inspektor dinotifikasi.' : `Usulan jadwal baru terkirim: ${slot}.`;
     }
     rows = rows;
   }
@@ -145,7 +145,7 @@
       </div>
       <p class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-slate-500">
         <span>{o.slot ?? 'Slot disepakati'}</span>
-        {#if o.inspector}<span class="inline-flex items-center gap-1.5"><CircleUserRound class="size-4" /> Inspektur: {o.inspector} (GPS Lock)</span>{/if}
+        {#if o.inspector}<span class="inline-flex items-center gap-1.5"><CircleUserRound class="size-4" /> Inspektor: {o.inspector} (GPS Lock)</span>{/if}
       </p>
     </div>
   {/each}

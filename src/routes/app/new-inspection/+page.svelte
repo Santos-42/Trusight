@@ -1,11 +1,23 @@
 <script lang="ts">
   import { ChevronLeft } from '@lucide/svelte';
+  import { page } from '$app/stores';
   import { api } from '$lib/api';
   import { getSession, requireAuth } from '$lib/guest';
   import { PRICING } from '$lib/config';
   import { rupiah } from '$lib/format';
+  import { mockVehicles } from '$lib/mocks';
   let vehicleId = 'civic-2021', type: 'standard' | 'fast-track' = 'fast-track', err = '', ok = '';
   let link = '', linkMsg = '', linkOk = false, checking = false;
+  const VEHICLE_OPTIONS = [
+    { id: 'civic-2021', label: 'Honda Civic Turbo 2021 — Kalibata' },
+    { id: 'porsche-911-2022', label: 'Porsche 911 Carrera S 2022 — Jakut' },
+    { id: 'avanza-2022', label: 'Avanza Veloz 2022 — Tebet' }
+  ];
+  // Kendaraan sudah dibawa dari Vehicle Detail (ORDER VERIFICATION) — tanpa pilih ulang.
+  $: presetVehicle = $page.url.searchParams.get('vehicle');
+  $: if (presetVehicle && VEHICLE_OPTIONS.some((v) => v.id === presetVehicle)) vehicleId = presetVehicle;
+  $: vehicleLocked = !!presetVehicle && VEHICLE_OPTIONS.some((v) => v.id === presetVehicle);
+  $: lockedVehicle = mockVehicles.find((v) => v.id === vehicleId);
   function checkLink() {
     if (!link.trim() || checking) return;
     checking = true;
@@ -56,13 +68,23 @@
       <p class="mt-1 text-[13px] text-slate-500">Provide the vehicle details below. Our certified experts will perform a clinical inspection.</p>
     </div>
     <div class="ts-card grid gap-3">
-      <label class="text-sm font-semibold">Vehicle
-        <select class="ts-field mt-1" bind:value={vehicleId}>
-          <option value="civic-2021">Honda Civic Turbo 2021 — Kalibata</option>
-          <option value="porsche-911-2022">Porsche 911 Carrera S 2022 — Jakut</option>
-          <option value="avanza-2022">Avanza Veloz 2022 — Tebet</option>
-        </select>
-      </label>
+      {#if vehicleLocked && lockedVehicle}
+        <div class="flex items-start justify-between gap-2 rounded-2xl border border-brand-200 bg-brand-100/40 p-3">
+          <div>
+            <p class="text-xs text-slate-500">Kendaraan terpilih</p>
+            <p class="mt-0.5 font-bold">{lockedVehicle.title} — {lockedVehicle.location}</p>
+          </div>
+          <a href={`/app/vehicle/${vehicleId}`} class="text-xs font-bold text-brand-600">Ganti</a>
+        </div>
+      {:else}
+        <label class="text-sm font-semibold">Vehicle
+          <select class="ts-field mt-1" bind:value={vehicleId}>
+            {#each VEHICLE_OPTIONS as v}
+              <option value={v.id}>{v.label}</option>
+            {/each}
+          </select>
+        </label>
+      {/if}
       <div class="grid grid-cols-2 gap-2">
         <button class="rounded-2xl border-2 p-3 text-left {type === 'standard' ? 'border-brand-600 bg-brand-100/40' : 'border-slate-100'}" on:click={() => (type = 'standard')}><p class="text-xs text-slate-500">Standard</p><p class="font-extrabold">{rupiah(PRICING.standard)}</p></button>
         <button class="rounded-2xl border-2 p-3 text-left {type === 'fast-track' ? 'border-brand-600 bg-brand-100/40' : 'border-slate-100'}" on:click={() => (type = 'fast-track')}><p class="text-xs text-slate-500">Fast-Track Priority</p><p class="font-extrabold">{rupiah(PRICING['fast-track'])}</p></button>

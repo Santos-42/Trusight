@@ -18,7 +18,7 @@
       <h1 class="text-[24px] font-bold tracking-tight">Certified Inspectors</h1>
       <p class="text-[13px] text-slate-500">Manage verificator licenses, rating performance, and active duty assignments.</p>
     </div>
-    <button class="inline-flex min-h-11 items-center rounded-xl bg-ink-900 px-4 text-sm font-bold text-white" on:click={() => (msg = 'Tambah inspektur segera hadir.')}>+ Add New Inspector</button>
+    <button class="inline-flex min-h-11 items-center rounded-xl bg-ink-900 px-4 text-sm font-bold text-white" on:click={() => (msg = 'Tambah inspektor segera hadir.')}>+ Add New Inspector</button>
   </div>
   {#if msg}<p class="text-sm text-emerald-700">{msg}</p>{/if}
   <div class="grid items-start gap-4 lg:grid-cols-3">

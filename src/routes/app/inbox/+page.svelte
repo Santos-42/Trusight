@@ -26,7 +26,7 @@
         return {
           id: c.id, name: c.seller_name ?? c.inspector_name ?? `Order ${c.order_id}`,
           snippet: c.last_msg ?? 'Belum ada pesan', with: with_.length ? with_ : ['a'],
-          nameA: c.seller_name ?? `Order ${c.order_id}`, nameB: c.inspector_name ?? 'Belum ada inspektur'
+          nameA: c.seller_name ?? `Order ${c.order_id}`, nameB: c.inspector_name ?? 'Belum ada inspektor'
         };
       });
       threads = sortThreads(mapped);
@@ -40,7 +40,7 @@
     <h1 class="text-xl font-extrabold">Inbox</h1>
   </div>
   {#if $authed}
-    <ThreadList {threads} tabA="Penjual" tabB="Inspektur" base="/app/chat" />
+    <ThreadList {threads} tabA="Penjual" tabB="Inspektor" base="/app/chat" />
   {:else}
     <div class="grid justify-items-center gap-2 rounded-2xl border bg-white p-10 text-center">
       <InboxIcon class="size-10 text-slate-300" />

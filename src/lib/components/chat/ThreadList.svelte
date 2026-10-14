@@ -14,7 +14,7 @@
     nameB?: string;
   }[] = [];
   export let tabA = 'Penjual';
-  export let tabB = 'Inspektur';
+  export let tabB = 'Inspektor';
   export let base = '/app/chat';
   export let emptyHint = 'Percakapan dengan pihak ini akan muncul di sini.';
   let tab: 'a' | 'b' = 'a';

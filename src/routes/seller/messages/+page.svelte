@@ -21,7 +21,7 @@
         return {
           id: c.id, name: c.buyer_name ?? c.inspector_name ?? `Order ${c.order_id}`,
           snippet: c.last_msg ?? 'Belum ada pesan', with: with_.length ? with_ : ['a'],
-          nameA: c.buyer_name ?? 'Pembeli', nameB: c.inspector_name ?? 'Belum ada inspektur'
+          nameA: c.buyer_name ?? 'Pembeli', nameB: c.inspector_name ?? 'Belum ada inspektor'
         };
       });
       threads = sortThreads(mapped);
@@ -34,6 +34,6 @@
     <a href="/seller" class="ts-back" aria-label="Kembali"><ChevronLeft class="size-5" /></a>
     <h1 class="text-xl font-extrabold">Pesan Masuk</h1>
   </div>
-  <ThreadList {threads} tabA="Pembeli" tabB="Inspektur" base="/seller/messages"
+  <ThreadList {threads} tabA="Pembeli" tabB="Inspektor" base="/seller/messages"
     emptyHint="Percakapan dengan pihak ini akan muncul di sini." />
 </div>

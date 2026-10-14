@@ -24,7 +24,7 @@
     else if (dx > 40) slide = (slide - 1 + slides.length) % slides.length;
   }
   function order() {
-    requireAuth(() => goto('/app/new-inspection'), `/app/vehicle/${id}`);
+    requireAuth(() => goto(`/app/new-inspection?vehicle=${encodeURIComponent(id)}`), `/app/vehicle/${id}`);
   }
 </script>
 <svelte:head><title>{v.title} — TruSight</title></svelte:head>

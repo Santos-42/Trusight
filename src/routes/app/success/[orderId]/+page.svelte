@@ -30,7 +30,7 @@
     <div class="grid content-start gap-4">
       <div class="ts-card grid gap-2 text-sm">
         <p class="ts-eyebrow">Langkah berikutnya</p>
-        <p class="flex gap-2"><FileText class="mt-0.5 size-4 shrink-0 text-brand-600" /> Inspektur tersertifikasi dijadwalkan ≤ 1×24 jam dan kamu bisa pantau progres live.</p>
+        <p class="flex gap-2"><FileText class="mt-0.5 size-4 shrink-0 text-brand-600" /> Inspektor tersertifikasi dijadwalkan ≤ 1×24 jam dan kamu bisa pantau progres live.</p>
         <p class="flex gap-2"><RotateCw class="mt-0.5 size-4 shrink-0 text-brand-600" /> Laporan resmi + skor + garansi 30 hari terbit otomatis setelah inspeksi.</p>
       </div>
       <a href={`/app/tracking/${orderId}`} class="btn-teal w-full gap-2">VIEW PROGRESS <RotateCw class="size-4" /></a>
