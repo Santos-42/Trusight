@@ -16,6 +16,12 @@
   $: car = order?.vehicle_id ? findVehicle(order.vehicle_id) : null;
   // Lokasi detail hanya tampil bila server mengizinkan (pembeli order + sudah bayar).
   $: detail = order?.location_revealed ? order.location_detail : null;
+
+  function prettyDate(v: string | null | undefined): string {
+    if (!v) return '—';
+    const d = new Date(String(v).replace(' ', 'T'));
+    return Number.isNaN(d.getTime()) ? v : d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+  }
 </script>
 <svelte:head><title>Payment Success — TruSight</title></svelte:head>
 <div class="grid gap-5 pb-8">
@@ -29,7 +35,7 @@
       <p class="text-center text-[0.9375rem] text-slate-500">Your verification request for the <b class="text-ink-900">{car?.title ?? order?.vehicle ?? 'kendaraanmu'}</b> has been received.</p>
       <div class="ts-card grid gap-4">
         <div><p class="ts-eyebrow">Order ID</p><p class="mt-0.5 font-bold">{orderId}</p></div>
-        <div><p class="ts-eyebrow">Date</p><p class="mt-0.5 font-bold">Oct 24, 2023</p></div>
+        <div><p class="ts-eyebrow">Date</p><p class="mt-0.5 font-bold">{prettyDate(order?.created_at)}</p></div>
         <div><p class="ts-eyebrow">Service Type</p><p class="mt-0.5 flex items-center gap-1.5 font-bold"><Zap class="size-4 text-brand-600" /> {order?.type === 'fast-track' ? 'Fast Track' : 'Standard'}</p></div>
         <div class="flex gap-3">
           <span class="grid size-16 shrink-0 place-items-center overflow-hidden rounded-xl bg-ink-900 text-white">

@@ -11,6 +11,7 @@
     "lint": "prettier --check . && eslint .",
     "format": "prettier --write .",
     "test": "vitest run",
+    "images:optimize": "node scripts/optimize-images.mjs",
     "db:local": "wrangler d1 migrations apply trusight --local",
     "deploy": "npm run build && wrangler pages deploy .svelte-kit/cloudflare"
   },
@@ -24,6 +25,7 @@
     "eslint": "^9.0.0",
     "prettier": "^3.3.0",
     "prettier-plugin-svelte": "^3.2.0",
+    "sharp": "^0.35.5",
     "svelte": "^5.0.0",
     "svelte-check": "^4.0.0",
     "tailwindcss": "^4.0.0",

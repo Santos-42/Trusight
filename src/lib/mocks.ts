@@ -7,6 +7,7 @@
  *
  * `cover` menunjuk ke `static/vehicles/<id>/hero.jpg`. Kalau filenya belum ada,
  * VehicleCard jatuh ke ikon mobil — jadi katalog tetap tampil.
+ * Jalankan `npm run images:optimize` sesudah menaruh gambar baru.
  */
 export type MockVehicle = {
   id: string;
