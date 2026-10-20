@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Building2, ChevronLeft, ChevronRight, Landmark, LogOut, ScrollText, Star } from '@lucide/svelte';
   import { clearSession } from '$lib/guest';
+  import FontSizePicker from '$lib/components/settings/FontSizePicker.svelte';
   function logout() {
     clearSession();
     location.href = '/';
@@ -22,7 +23,7 @@
   <div class="ts-card grid justify-items-center gap-1 py-6 text-center">
     <span class="grid size-16 place-items-center rounded-full bg-ink-900 text-xl font-bold text-white">HW</span>
     <p class="mt-1 text-lg font-bold">Hendra Wijaya</p>
-    <p class="flex items-center gap-1 text-[13px] text-slate-500"><Star class="size-3.5 fill-gold-400 text-gold-400" /> 4.8/5.0 Rating Penjual</p>
+    <p class="flex items-center gap-1 text-[0.8125rem] text-slate-500"><Star class="size-3.5 fill-gold-400 text-gold-400" /> 4.8/5.0 Rating Penjual</p>
   </div>
   <div class="ts-card divide-y divide-slate-100 !p-0">
     {#each rows as r}
@@ -42,5 +43,6 @@
     {/each}
   </div>
   {#if msg}<p class="text-sm text-slate-500">{msg}</p>{/if}
+  <FontSizePicker />
   <button class="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-red-600 px-6 text-sm font-bold text-white hover:bg-red-700" on:click={logout}><LogOut class="size-4" /> Logout</button>
 </div>

@@ -11,6 +11,6 @@
   </svg>
   <div class="text-center">
     <p class="text-5xl font-extrabold tracking-tight">{score}</p>
-    <p class="mt-1 text-[11px] font-semibold tracking-[0.18em] text-slate-500">TRUSIGHT SCORE</p>
+    <p class="mt-1 text-[0.6875rem] font-semibold tracking-[0.18em] text-slate-500">TRUSIGHT SCORE</p>
   </div>
 </div>

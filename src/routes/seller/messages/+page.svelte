@@ -6,7 +6,7 @@
   import { getSession } from '$lib/guest';
   import { sortThreads } from '$lib/chatStore';
   type Thread = { id: string; name: string; snippet: string; with: ('a' | 'b')[]; nameA?: string; nameB?: string };
-  // Tab A = Pembeli, Tab B = Inspektur
+  // Tab A = Pembeli, Tab B = Inspektor
   let threads: Thread[] = [];
   onMount(async () => {
     const uid = getSession()?.id;

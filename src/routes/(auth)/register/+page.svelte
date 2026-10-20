@@ -23,7 +23,7 @@
 <svelte:head><title>Register — TruSight</title></svelte:head>
 <div class="mx-auto max-w-md px-6 pb-10 pt-12">
   <a href="/" class="ts-back" aria-label="Kembali"><ChevronLeft class="size-5" /></a>
-  <h1 class="ts-h mt-8 text-[28px]">Hello! Register to get<br />started</h1>
+  <h1 class="ts-h mt-8 text-[1.75rem]">Hello! Register to get<br />started</h1>
   <form class="mt-8 grid gap-4" on:submit|preventDefault={submit}>
     <input class="ts-field" placeholder="Username" bind:value={name} required />
     <input class="ts-field" placeholder="Email" bind:value={email} type="email" required />

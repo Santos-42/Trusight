@@ -71,8 +71,8 @@
 <svelte:head><title>Admin Reports</title></svelte:head>
 <div class="grid gap-4">
   <div>
-    <h1 class="text-[24px] font-bold tracking-tight">Inspection Reports</h1>
-    <p class="text-[13px] text-slate-500">Audit, verify, and publish clinical vehicle inspection reports.</p>
+    <h1 class="text-[1.5rem] font-bold tracking-tight">Inspection Reports</h1>
+    <p class="text-[0.8125rem] text-slate-500">Audit, verify, and publish clinical vehicle inspection reports.</p>
   </div>
   <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
     {#each stats as s}
@@ -90,6 +90,8 @@
             <td class="px-4 py-3 font-bold {scoreCls(r.score)}">{r.score} / 100</td>
             <td class="px-4 py-3"><span class={stPill(r.st)}>{r.st}</span></td><td class="px-4 py-3">{r.date}</td>
             <td class="px-4 py-3">
+              <span class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <a class="font-bold text-slate-500" title="Lihat laporan di layar" href={`/app/report/${r.id.replace(/^#/, '')}`}>Lihat</a>
               {#if r.st === 'Published'}
                 <button class="font-bold text-brand-600" title="Unduh PDF laporan" on:click={() => download(r)}>Download</button>
               {:else if r.st === 'Pending Review'}
@@ -102,6 +104,7 @@
               {:else}
                 <button class="font-bold text-brand-600" title="Ubah skor laporan" on:click={() => startEdit(r)}>Edit</button>
               {/if}
+              </span>
             </td>
           </tr>
         {/each}

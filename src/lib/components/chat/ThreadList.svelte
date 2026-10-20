@@ -1,6 +1,6 @@
 <script lang="ts">
   /**
-   * Daftar thread inbox dengan 2 tab lawan bicara (mis. Penjual | Inspektur).
+   * Daftar thread inbox dengan 2 tab lawan bicara (mis. Penjual | Inspektor).
    * Satu percakapan order bisa muncul di dua tab — nama yang tampil adalah
    * lawan bicara pada tab tersebut.
    */

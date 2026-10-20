@@ -63,9 +63,9 @@
     <img src="/logo.png" alt="TruSight" class="h-7 w-auto brightness-0 invert" />
   </a>
   {#each sets[role] as m}
-    <a href={m.href} class="relative flex w-[68px] flex-col items-center gap-1 rounded-2xl px-1 py-2.5 text-center text-[10px] font-semibold leading-tight {path === m.href ? 'bg-white/12 text-white' : 'text-white/55 hover:bg-white/5 hover:text-white'}">
+    <a href={m.href} class="relative flex w-[68px] flex-col items-center gap-1 rounded-2xl px-1 py-2.5 text-center text-[0.625rem] font-semibold leading-tight {path === m.href ? 'bg-white/12 text-white' : 'text-white/55 hover:bg-white/5 hover:text-white'}">
       {#if m.href === '/seller/schedule' && pendingCount}
-        <span class="absolute right-0 top-1 grid size-4 min-w-[16px] place-items-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">{pendingCount}</span>
+        <span class="absolute right-0 top-1 grid size-4 min-w-[16px] place-items-center rounded-full bg-red-500 px-1 text-[0.5625rem] font-bold text-white">{pendingCount}</span>
       {/if}
       <svelte:component this={m.icon} class="size-5" />
       {m.label}
@@ -73,11 +73,11 @@
   {/each}
   <div class="mt-auto flex flex-col items-center gap-2 pt-3">
     {#if $authed}
-      <button class="flex w-[68px] flex-col items-center gap-1 rounded-2xl px-1 py-2.5 text-center text-[10px] font-bold leading-tight text-red-300 hover:bg-red-500/15" on:click={logout} title="Keluar">
+      <button class="flex w-[68px] flex-col items-center gap-1 rounded-2xl px-1 py-2.5 text-center text-[0.625rem] font-bold leading-tight text-red-300 hover:bg-red-500/15" on:click={logout} title="Keluar">
         <LogOut class="size-5" /> Keluar
       </button>
     {:else}
-      <button class="flex w-[68px] flex-col items-center gap-1 rounded-2xl bg-brand-600 px-1 py-2.5 text-[10px] font-bold text-white hover:bg-brand-500" on:click={askLogin}>
+      <button class="flex w-[68px] flex-col items-center gap-1 rounded-2xl bg-brand-600 px-1 py-2.5 text-[0.625rem] font-bold text-white hover:bg-brand-500" on:click={askLogin}>
         <User class="size-5" /> Masuk
       </button>
     {/if}

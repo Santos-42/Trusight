@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { memDb } from '../stub/d1-mem';
 import {
-  approveOrder, checkin, claimVoucher, createOrder, ensureConversation, getOrder, getReport,
-  listConversations, listMessages, listOrders, listVouchers, postMessage, publishReport, quoteVoucher,
+  approveOrder, canRevealLocation, checkin, claimVoucher, createOrder, ensureConversation, getOrder, getReport,
+  getReportDetail, isOrderPaid,
+  listConversations, listInspectionItems, listMessages, listOrders, listVouchers, postMessage, publishReport, quoteVoucher,
   resetDemo, submitInspection
 } from '$lib/server/d1';
 
@@ -13,7 +14,14 @@ const SEED = {
     { id: 'u-bsantoso', role: 'inspector', name: 'Budi Santoso', email: 'budi.s@trusight.id' }
   ],
   vehicles: [
-    { id: 'civic-2021', seller_id: 'u-hendra', title: 'Honda Civic Turbo 2021', price: 385000000, location: 'Kalibata' }
+    {
+      id: 'civic-2021',
+      seller_id: 'u-hendra',
+      title: 'Honda Civic Turbo 2021',
+      price: 385000000,
+      location: 'Kalibata, Jakarta Selatan',
+      location_area: 'Jakarta Selatan'
+    }
   ]
 };
 
@@ -140,5 +148,88 @@ describe('reset demo', () => {
     await createOrder(db, { vehicleId: 'civic-2021', type: 'standard', buyerId: 'u-budi' });
     await resetDemo(db, 'transaksi');
     expect(await listOrders(db, {})).toHaveLength(0);
+  });
+});
+
+describe('laporan tampil di layar', () => {
+  it('getReport membawa rekomendasi, estimasi perbaikan, dan masa garansi', async () => {
+    const db = memDb(SEED);
+    const o = await createOrder(db, { vehicleId: 'civic-2021', type: 'standard', buyerId: 'u-budi' });
+    const s = await submitInspection(db, {
+      orderId: o.orderId, inspectorId: 'u-bsantoso', score: 85, grade: 'B',
+      recommendation: 'nego', repairEstimate: 2000000,
+      items: [{ category: 'mesin', key: 'oli', label: 'Oli mesin', condition: 'Normal' }]
+    });
+    const rep = await getReport(db, s.reportId);
+    expect(rep).toMatchObject({ recommendation: 'nego', repair_estimate: 2000000 });
+    expect(rep?.guarantee_until).toBeTruthy();
+  });
+
+  it('getReportDetail mengembalikan checklist + foto sekali jalan', async () => {
+    const db = memDb(SEED);
+    const o = await createOrder(db, { vehicleId: 'civic-2021', type: 'standard', buyerId: 'u-budi' });
+    const s = await submitInspection(db, {
+      orderId: o.orderId, inspectorId: 'u-bsantoso', score: 85, grade: 'B',
+      recommendation: 'beli', repairEstimate: 0,
+      items: [
+        { category: 'mesin', key: 'oli', label: 'Oli mesin', condition: 'Normal' },
+        { category: 'bodi', key: 'cat', label: 'Ketebalan cat', condition: 'Perlu perhatian' }
+      ],
+      photoKeys: ['inspection/mock-1.jpg', 'inspection/mock-2.jpg']
+    });
+    const detail = await getReportDetail(db, s.reportId);
+    expect(detail).not.toBeNull();
+    const d = detail as { items: { category: string; condition: string }[]; photos: unknown[] };
+    expect(d.items).toHaveLength(2);
+    expect(d.items.map((i) => i.category)).toEqual(['mesin', 'bodi']);
+    expect(d.photos).toHaveLength(2);
+    // urutan checklist terjaga sesuai input inspektor
+    expect(await listInspectionItems(db, s.inspectionId)).toHaveLength(2);
+  });
+});
+
+describe('privasi lokasi: detail hanya untuk pembeli/inspektor setelah bayar', () => {
+  const paid = async (db: ReturnType<typeof memDb>, orderId: string) => {
+    await db.prepare("INSERT INTO payments (id, order_id, provider, amount, method, status) VALUES (?,?,?,?,?,?)")
+      .bind(`PAY-${orderId}`, orderId, 'mock', 299000, 'QRIS', 'paid').run();
+  };
+
+  it('listOrders tidak pernah mengirim lokasi detail — termasuk ke seller', async () => {
+    const db = memDb(SEED);
+    await createOrder(db, { vehicleId: 'civic-2021', type: 'standard', buyerId: 'u-budi' });
+    const incoming = await listOrders(db, { sellerId: 'u-hendra' });
+    expect(incoming).toHaveLength(1);
+    expect(incoming[0].location).toBe('Jakarta Selatan');
+    expect(JSON.stringify(incoming)).not.toContain('Kalibata');
+  });
+
+  it('getOrder mengembalikan area + flag paid; detail belum dibuka', async () => {
+    const db = memDb(SEED);
+    const o = await createOrder(db, { vehicleId: 'civic-2021', type: 'standard', buyerId: 'u-budi' });
+    let full = await getOrder(db, o.orderId);
+    expect(full).toMatchObject({ location: 'Jakarta Selatan', location_detail: 'Kalibata, Jakarta Selatan', paid: false });
+    await paid(db, o.orderId);
+    expect(await isOrderPaid(db, o.orderId)).toBe(true);
+    full = await getOrder(db, o.orderId);
+    expect(full?.paid).toBe(true);
+  });
+
+  it('canRevealLocation: seller tidak pernah, pembeli/inspektor hanya setelah bayar', async () => {
+    const db = memDb(SEED);
+    const o = await createOrder(db, { vehicleId: 'civic-2021', type: 'standard', buyerId: 'u-budi' });
+    await approveOrder(db, { orderId: o.orderId, inspectorId: 'u-bsantoso', action: 'approve', slot: 'Kamis' });
+
+    // sebelum bayar: tidak ada yang boleh
+    expect(await canRevealLocation(db, o.orderId, 'u-budi')).toBe(false);
+    expect(await canRevealLocation(db, o.orderId, 'u-bsantoso')).toBe(false);
+    expect(await canRevealLocation(db, o.orderId, 'u-hendra')).toBe(false);
+
+    await paid(db, o.orderId);
+    expect(await canRevealLocation(db, o.orderId, 'u-budi')).toBe(true);
+    expect(await canRevealLocation(db, o.orderId, 'u-bsantoso')).toBe(true);
+    // seller tetap ditolak walau order sudah dibayar
+    expect(await canRevealLocation(db, o.orderId, 'u-hendra')).toBe(false);
+    // orang lain juga ditolak
+    expect(await canRevealLocation(db, o.orderId, 'u-orang-lain')).toBe(false);
   });
 });

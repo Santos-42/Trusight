@@ -34,7 +34,7 @@
     {#each items as it}
       <a href={it.reportId ? `/app/report/${it.reportId}` : `/app/tracking/${it.id.replace('#', '')}`} class="rounded-2xl border bg-white p-4 flex justify-between items-center">
         <div><p class="font-bold text-sm">{it.title} <span class="text-xs text-slate-400">{it.id}</span></p><p class="text-xs text-slate-500">{it.date} • {it.note}</p></div>
-        <span class="rounded-full px-3 py-1 text-[11px] font-bold {it.status==='DONE'?'bg-emerald-100 text-emerald-800':'bg-amber-100 text-amber-800'}">{it.status}</span>
+        <span class="rounded-full px-3 py-1 text-[0.6875rem] font-bold {it.status==='DONE'?'bg-emerald-100 text-emerald-800':'bg-amber-100 text-amber-800'}">{it.status}</span>
       </a>
     {/each}
     {#if !items.length}<div class="rounded-2xl border bg-white p-8 text-center text-sm text-slate-500">No History Available</div>{/if}
@@ -42,7 +42,7 @@
     <div class="grid justify-items-center gap-2 rounded-2xl border bg-white p-10 text-center sm:col-span-full">
       <Archive class="size-10 text-slate-300" />
       <p class="font-bold">No History Results</p>
-      <p class="max-w-xs text-[13px] text-slate-500">Access your complete verification records, real-time inspection updates, and detailed clinical reports.</p>
+      <p class="max-w-xs text-[0.8125rem] text-slate-500">Access your complete verification records, real-time inspection updates, and detailed clinical reports.</p>
       <a href="/login?returnTo=%2Fapp%2Fhistory" class="btn-navy mt-1">Login / Register</a>
     </div>
   {/if}

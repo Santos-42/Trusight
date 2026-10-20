@@ -34,7 +34,7 @@
 </script>
 
 <aside class="flex min-h-[calc(100dvh-4rem)] w-60 shrink-0 flex-col bg-ink-900 p-4 text-white">
-  <p class="px-2 text-[15px] font-bold">{titles[role]}</p>
+  <p class="px-2 text-[0.9375rem] font-bold">{titles[role]}</p>
   <nav class="mt-4 grid gap-1">
     {#each menus[role] as m}
       <a href={m.href} class="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium {path === m.href ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'}">

@@ -46,8 +46,11 @@ export async function createOrder(db: Db, b: OrderInput) {
 
 export interface OrderFilter { buyerId?: string; sellerId?: string; inspectorId?: string; status?: string }
 export function listOrders(db: Db, f: OrderFilter) {
+  // PRIVASI LOKASI: hanya v.location_area (kota/kecamatan) yang pernah dikirim
+  // lewat list. Lokasi detail sengaja tidak dipilih di sini supaya tidak bocor ke
+  // seller lewat /orders/incoming — tidak peduli apa pun filter-nya.
   let sql = `SELECT o.id, o.buyer_id, o.vehicle_id, o.type, o.status, o.total, o.created_at,
-    v.title AS vehicle, v.location, ub.name AS buyer, us.name AS seller, rep.id AS report_id
+    v.title AS vehicle, v.location_area AS location, ub.name AS buyer, us.name AS seller, rep.id AS report_id
     FROM orders o JOIN vehicles v ON v.id=o.vehicle_id
     LEFT JOIN users ub ON ub.id=o.buyer_id LEFT JOIN users us ON us.id=v.seller_id
     LEFT JOIN reports rep ON rep.order_id=o.id`;
@@ -65,8 +68,37 @@ export function listOrders(db: Db, f: OrderFilter) {
   return qAll(db, sql, ...p);
 }
 
+/** Apakah order sudah dibayar? `orders.status` sengaja TIDAK mencerminkan pembayaran
+ *  (status: pending → scheduled → verified), jadi sinyalnya ada di tabel `payments`. */
+export async function isOrderPaid(db: Db, orderId: string): Promise<boolean> {
+  const row = await qOne<{ id: string }>(db,
+    "SELECT id FROM payments WHERE order_id=? AND status='paid' LIMIT 1", orderId);
+  return !!row;
+}
+
+/**
+ * Lokasi detail hanya boleh dibuka untuk: pembeli order itu, atau inspektor yang
+ * bertugas — dan hanya SETELAH order dibayar. Seller tidak pernah lolos.
+ *
+ * Catatan keamanan: autentikasi server belum ada, jadi `viewerId` berasal dari client.
+ * Yang ditegakkan kuat tetap `listOrders`, yang tidak pernah mengirim lokasi detail.
+ */
+export async function canRevealLocation(db: Db, orderId: string, viewerId: string): Promise<boolean> {
+  if (!orderId || !viewerId) return false;
+  const o = await qOne<{ buyer_id: string }>(db, 'SELECT buyer_id FROM orders WHERE id=?', orderId);
+  if (!o) return false;
+  const isBuyer = o.buyer_id === viewerId;
+  const isInspector = !!await qOne(db,
+    'SELECT inspector_id FROM schedules WHERE order_id=? AND inspector_id=? LIMIT 1', orderId, viewerId);
+  if (!isBuyer && !isInspector) return false;
+  return isOrderPaid(db, orderId);
+}
+
 export async function getOrder(db: Db, id: string): Promise<Record<string, unknown> | null> {
-  const o = await qOne(db, `SELECT o.*, v.title AS vehicle, v.location, v.price, v.year,
+  // `location` = area publik (selalu aman), `location_detail` = alamat lengkap yang
+  // baru boleh disurface pemanggil bila `canRevealLocation` lolos.
+  const o = await qOne(db, `SELECT o.*, v.title AS vehicle, v.location_area AS location,
+    v.location AS location_detail, v.price, v.year,
     ub.name AS buyer, us.name AS seller
     FROM orders o JOIN vehicles v ON v.id=o.vehicle_id
     LEFT JOIN users ub ON ub.id=o.buyer_id LEFT JOIN users us ON us.id=v.seller_id
@@ -75,7 +107,8 @@ export async function getOrder(db: Db, id: string): Promise<Record<string, unkno
   const schedule = await qOne(db, `SELECT s.datetime, s.status, u.name AS inspector
     FROM schedules s LEFT JOIN users u ON u.id=s.inspector_id
     WHERE s.order_id=? ORDER BY s.rowid DESC LIMIT 1`, id);
-  return { ...(o as Record<string, unknown>), schedule: schedule ?? null };
+  const paid = await isOrderPaid(db, id);
+  return { ...(o as Record<string, unknown>), schedule: schedule ?? null, paid };
 }
 
 export interface ApproveInput { orderId: string; inspectorId: string; action: 'approve' | 'alternative'; slot?: string }
@@ -138,9 +171,37 @@ export async function submitInspection(db: Db, b: SubmitInput) {
 }
 
 export function getReport(db: Db, id: string) {
-  return qOne(db, `SELECT r.*, v.title AS vehicle, ui.name AS inspector, i.inspector_id, o.status AS order_status, o.buyer_id
+  // i.recommendation / repair_estimate / guarantee_until / summary sebelumnya tidak
+  // pernah diambil, padahal itulah isi laporan yang harus tampil di layar.
+  return qOne(db, `SELECT r.*, v.title AS vehicle, v.location_area AS location,
+    ui.name AS inspector, i.inspector_id, o.status AS order_status, o.buyer_id,
+    i.recommendation, i.repair_estimate, i.summary, i.guarantee_until, i.published_at
     FROM reports r JOIN inspections i ON i.id=r.inspection_id JOIN orders o ON o.id=r.order_id
     JOIN vehicles v ON v.id=o.vehicle_id LEFT JOIN users ui ON ui.id=i.inspector_id WHERE r.id=?`, id);
+}
+
+/** Checklist hasil inspeksi per kategori (mesin/bodi/interior). */
+export function listInspectionItems(db: Db, inspectionId: string) {
+  return qAll(db, `SELECT category, item_key, item_label, condition, note
+    FROM inspection_items WHERE inspection_id=? ORDER BY rowid`, inspectionId);
+}
+
+/** Foto dokumentasi inspeksi. */
+export function listInspectionPhotos(db: Db, inspectionId: string) {
+  return qAll(db, `SELECT r2_key, taken_at, category
+    FROM inspection_photos WHERE inspection_id=? ORDER BY rowid`, inspectionId);
+}
+
+/** Laporan lengkap untuk tampilan layar: header + checklist + foto. */
+export async function getReportDetail(db: Db, id: string) {
+  const r = await getReport(db, id);
+  if (!r) return null;
+  const inspectionId = (r as { inspection_id?: string }).inspection_id ?? '';
+  return {
+    ...(r as Record<string, unknown>),
+    items: inspectionId ? await listInspectionItems(db, inspectionId) : [],
+    photos: inspectionId ? await listInspectionPhotos(db, inspectionId) : []
+  };
 }
 
 export function listReports(db: Db, onlyPending = false) {
@@ -236,10 +297,25 @@ const SEED_USERS = [
   ['u-firman', 'inspector', 'Firman Comstir', 'firman@trusight.id'],
   ['u-admin', 'admin', 'Admin TruSight', 'admin@trusight.id']
 ] as const;
+/** Seed kendaraan — harus senada dengan src/lib/mocks.ts + migrations/002_seed.sql.
+ *  Urutan: id, seller_id, title, brand, model, year, mileage, transmission, fuel,
+ *  plate_no, color, location (detail), location_area (publik), price, status. */
 const SEED_VEHICLES = [
-  ['civic-2021', 'u-hendra', 'Honda Civic Turbo 2021', 'Honda', 'Civic Turbo', 2021, 45000, 'Matic', 'Bensin', 'B 1234 SG', 'Hitam', 'Kalibata, Jakarta Selatan', 385000000, 'listed'],
-  ['porsche-911-2022', 'u-hendra', 'Porsche 911 Carrera S 2022', 'Porsche', '911 Carrera S', 2022, 12400, 'Manual', 'Bensin', 'B 992 TS', 'Putih', 'Jakarta Utara', 4750000000, 'certified'],
-  ['avanza-2022', 'u-hendra', 'Toyota Avanza Veloz 2022', 'Toyota', 'Avanza Veloz', 2022, 32000, 'Matic', 'Bensin', 'B 2211 AV', 'Silver', 'Tebet, Jakarta Selatan', 235000000, 'listed']
+  ['civic-2021', 'u-hendra', 'Honda Civic Turbo 2021', 'Honda', 'Civic Turbo', 2021, 45000, 'Matic', 'Bensin', 'B 1234 SG', 'Hitam', 'Kalibata, Jakarta Selatan', 'Jakarta Selatan', 385000000, 'listed'],
+  ['porsche-911-2022', 'u-hendra', 'Porsche 911 Carrera S 2022', 'Porsche', '911 Carrera S', 2022, 12400, 'Manual', 'Bensin', 'B 992 TS', 'Putih', 'Pantai Indah Kapuk, Jakarta Utara', 'Jakarta Utara', 4750000000, 'certified'],
+  ['avanza-2022', 'u-hendra', 'Toyota Avanza Veloz 2022', 'Toyota', 'Avanza Veloz', 2022, 32000, 'Matic', 'Bensin', 'B 2211 AV', 'Silver', 'Tebet, Jakarta Selatan', 'Jakarta Selatan', 235000000, 'listed'],
+  ['innova-2020', 'u-hendra', 'Toyota Kijang Innova Venturer 2020', 'Toyota', 'Kijang Innova Venturer', 2020, 68000, 'Matic', 'Diesel', 'B 1010 IN', 'Hitam', 'Bintaro, Tangerang Selatan', 'Tangerang Selatan', 335000000, 'certified'],
+  ['xpander-2021', 'u-hendra', 'Mitsubishi Xpander Ultimate 2021', 'Mitsubishi', 'Xpander Ultimate', 2021, 41000, 'Matic', 'Bensin', 'B 3030 XP', 'Abu-abu', 'Bekasi Timur, Kota Bekasi', 'Kota Bekasi', 268000000, 'listed'],
+  ['hrv-2022', 'u-hendra', 'Honda HR-V SE 2022', 'Honda', 'HR-V SE', 2022, 27000, 'Matic', 'Bensin', 'B 2626 HR', 'Putih', 'Kemang, Jakarta Selatan', 'Jakarta Selatan', 372000000, 'certified'],
+  ['brio-2021', 'u-hendra', 'Honda Brio RS 2021', 'Honda', 'Brio RS', 2021, 38000, 'Matic', 'Bensin', 'B 7788 BR', 'Merah', 'Margonda, Kota Depok', 'Kota Depok', 178000000, 'listed'],
+  ['ertiga-2020', 'u-hendra', 'Suzuki Ertiga GX 2020', 'Suzuki', 'Ertiga GX', 2020, 52000, 'Matic', 'Bensin', 'F 1212 ER', 'Silver', 'Cibinong, Kabupaten Bogor', 'Bogor', 212000000, 'listed'],
+  ['pajero-2019', 'u-hendra', 'Mitsubishi Pajero Sport Dakar 2019', 'Mitsubishi', 'Pajero Sport Dakar', 2019, 74000, 'Matic', 'Diesel', 'B 8080 PJ', 'Hitam', 'Bintaro, Tangerang Selatan', 'Tangerang Selatan', 445000000, 'certified'],
+  ['crv-2021', 'u-hendra', 'Honda CR-V Turbo 2021', 'Honda', 'CR-V Turbo', 2021, 36000, 'Matic', 'Bensin', 'B 4545 CV', 'Putih', 'Kelapa Gading, Jakarta Utara', 'Jakarta Utara', 428000000, 'listed'],
+  ['calya-2021', 'u-hendra', 'Toyota Calya G 2021', 'Toyota', 'Calya G', 2021, 44000, 'Matic', 'Bensin', 'B 5151 CL', 'Silver', 'Ciledug, Kota Tangerang', 'Tangerang', 152000000, 'listed'],
+  ['jazz-2018', 'u-hendra', 'Honda Jazz RS 2018', 'Honda', 'Jazz RS', 2018, 61000, 'Matic', 'Bensin', 'B 1818 JZ', 'Biru', 'Tebet, Jakarta Selatan', 'Jakarta Selatan', 219000000, 'listed'],
+  ['fortuner-2020', 'u-hendra', 'Toyota Fortuner VRZ 2020', 'Toyota', 'Fortuner VRZ', 2020, 58000, 'Matic', 'Diesel', 'B 2020 FT', 'Hitam', 'Cilandak, Jakarta Selatan', 'Jakarta Selatan', 487000000, 'certified'],
+  ['camry-2021', 'u-hendra', 'Toyota Camry 2.5 V 2021', 'Toyota', 'Camry 2.5 V', 2021, 29000, 'Matic', 'Bensin', 'B 2525 CM', 'Putih', 'Senayan, Jakarta Pusat', 'Jakarta Pusat', 725000000, 'certified'],
+  ['alphard-2019', 'u-hendra', 'Toyota Alphard SC 2019', 'Toyota', 'Alphard SC', 2019, 47000, 'Matic', 'Bensin', 'B 1919 AL', 'Hitam', 'Pluit, Jakarta Utara', 'Jakarta Utara', 1150000000, 'certified']
 ] as const;
 
 /** Reset demo. users TIDAK PERNAH dihapus — hanya INSERT OR IGNORE seed. */
@@ -254,13 +330,13 @@ export async function resetDemo(db: Db, mode: 'full' | 'transaksi') {
     await exec(db, 'DELETE FROM vehicles');
     cleared.push('vehicles');
     for (const v of SEED_VEHICLES) {
-      await exec(db, `INSERT INTO vehicles (id, seller_id, title, brand, model, year, mileage, transmission, fuel, plate_no, color, location, price, status)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, ...v);
+      await exec(db, `INSERT INTO vehicles (id, seller_id, title, brand, model, year, mileage, transmission, fuel, plate_no, color, location, location_area, price, status)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, ...v);
     }
   }
   for (const u of SEED_USERS) {
     await exec(db, 'INSERT OR IGNORE INTO users (id, role, name, email, password_hash) VALUES (?,?,?,?,?)',
       u[0], u[1], u[2], u[3], 'hash:demo');
   }
-  return { mode, tablesCleared: cleared, usersPreserved: true, seedEnsured: { users: 5, vehicles: 3 }, at: new Date().toISOString() };
+  return { mode, tablesCleared: cleared, usersPreserved: true, seedEnsured: { users: 5, vehicles: SEED_VEHICLES.length }, at: new Date().toISOString() };
 }

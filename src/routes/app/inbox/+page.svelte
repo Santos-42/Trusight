@@ -6,7 +6,7 @@
   import { authed, getSession } from '$lib/guest';
   import { sortThreads } from '$lib/chatStore';
   type Thread = { id: string; name: string; snippet: string; with: ('a' | 'b')[]; nameA?: string; nameB?: string };
-  // Tab A = Penjual, Tab B = Inspektur
+  // Tab A = Penjual, Tab B = Inspektor
   const seed: Thread[] = [
     { id: '1', name: 'Firman Comstir', snippet: 'The engine diagnostic for the 9… • 2M AGO', with: ['b'] },
     { id: '1', name: 'Adi Bengkel', snippet: "I've uploaded the paint thickness re… • 1H AGO", with: ['a'] },
@@ -45,7 +45,7 @@
     <div class="grid justify-items-center gap-2 rounded-2xl border bg-white p-10 text-center">
       <InboxIcon class="size-10 text-slate-300" />
       <p class="font-bold">No inbox available</p>
-      <p class="max-w-xs text-[13px] text-slate-500">Login untuk melihat pesan verifikator dan notifikasi order.</p>
+      <p class="max-w-xs text-[0.8125rem] text-slate-500">Login untuk melihat pesan verifikator dan notifikasi order.</p>
       <a href="/login?returnTo=%2Fapp%2Finbox" class="btn-navy mt-1">Login / Register</a>
     </div>
   {/if}

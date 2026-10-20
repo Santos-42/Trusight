@@ -23,7 +23,7 @@
   <div class="ts-card">
     <p class="ts-eyebrow">Saldo tersedia</p>
     <p class="mt-1 text-2xl font-extrabold">{rupiah(saldo)}</p>
-    <p class="mt-2 flex items-center gap-2 text-[13px] text-slate-500"><Landmark class="size-4" /> BCA •••• 8821 • Hendra Wijaya</p>
+    <p class="mt-2 flex items-center gap-2 text-[0.8125rem] text-slate-500"><Landmark class="size-4" /> BCA •••• 8821 • Hendra Wijaya</p>
   </div>
   <div class="ts-card grid gap-3">
     <label class="grid gap-1 text-sm font-bold">Nominal penarikan
@@ -31,7 +31,7 @@
     </label>
     <div class="flex gap-2">
       {#each quick as q}
-        <button class="flex-1 rounded-xl border px-2 py-2 text-[13px] font-bold {amount === q ? 'border-brand-600 text-brand-700' : ''}" on:click={() => (amount = q)}>{rupiah(q)}</button>
+        <button class="flex-1 rounded-xl border px-2 py-2 text-[0.8125rem] font-bold {amount === q ? 'border-brand-600 text-brand-700' : ''}" on:click={() => (amount = q)}>{rupiah(q)}</button>
       {/each}
     </div>
     {#if msg}<p class="text-sm text-emerald-700">{msg}</p>{/if}

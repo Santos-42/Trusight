@@ -23,8 +23,8 @@
         <span class="grid size-12 place-items-center rounded-2xl bg-ink-900 text-white"><ShieldCheck class="size-6" /></span>
         <button class="grid size-9 place-items-center rounded-full bg-slate-100 text-slate-500" on:click={close} aria-label="Tutup"><X class="size-5" /></button>
       </div>
-      <h2 class="ts-h mt-4 text-[22px]">Login untuk melanjutkan</h2>
-      <p class="mt-1 text-[14px] text-slate-500">Pemesanan, pembayaran, dan pelacakan inspeksi hanya untuk akun terdaftar. Lihat-lihat katalog tetap gratis.</p>
+      <h2 class="ts-h mt-4 text-[1.375rem]">Login untuk melanjutkan</h2>
+      <p class="mt-1 text-[0.875rem] text-slate-500">Pemesanan, pembayaran, dan pelacakan inspeksi hanya untuk akun terdaftar. Lihat-lihat katalog tetap gratis.</p>
       <div class="mt-5 grid gap-2.5">
         <button class="btn-navy w-full" on:click={() => go(`/login?returnTo=${encodeURIComponent(returnTo)}`)}>Login</button>
         <button class="btn-outline w-full" on:click={() => go(`/register?returnTo=${encodeURIComponent(returnTo)}`)}>Register</button>

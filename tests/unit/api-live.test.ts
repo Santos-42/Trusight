@@ -9,7 +9,14 @@ const SEED = {
     { id: 'u-bsantoso', role: 'inspector', name: 'Budi Santoso', email: 'budi.s@trusight.id', password_hash: 'hash:demo' }
   ],
   vehicles: [
-    { id: 'civic-2021', seller_id: 'u-hendra', title: 'Honda Civic Turbo 2021', price: 385000000, location: 'Kalibata' }
+    {
+      id: 'civic-2021',
+      seller_id: 'u-hendra',
+      title: 'Honda Civic Turbo 2021',
+      price: 385000000,
+      location: 'Kalibata, Jakarta Selatan',
+      location_area: 'Jakarta Selatan'
+    }
   ]
 };
 
@@ -68,6 +75,51 @@ describe('endpoint live D1', () => {
     // Pakai ulang ditolak
     const pay2 = await (await POST(ctx(`orders/${id}/pay`, 'POST', { method: 'QRIS', voucherCode: 'HEMAT50', buyerId: uid }, db))).json();
     expect(pay2.ok).toBe(false);
+  });
+
+  it('GET /reports/:id membawa checklist + foto untuk tampilan layar', async () => {
+    const db = memDb(SEED);
+    const created = await (await POST(ctx('orders', 'POST', { vehicleId: 'civic-2021', type: 'standard', buyerId: 'u-budi' }, db))).json();
+    const sub = await (await POST(ctx('inspections/submit', 'POST', {
+      orderId: created.data.orderId, inspectorId: 'u-bsantoso', score: 88, grade: 'B+',
+      recommendation: 'nego', repairEstimate: 1500000,
+      items: [
+        { category: 'mesin', key: 'oli', label: 'Oli mesin', condition: 'Normal' },
+        { category: 'interior', key: 'ac', label: 'AC', condition: 'Perlu perhatian' }
+      ],
+      photoKeys: ['inspection/mock-1.jpg']
+    }, db))).json();
+
+    const rep = await (await GET(ctx(`reports/${sub.data.reportId}`, 'GET', null, db))).json();
+    expect(rep.ok).toBe(true);
+    expect(rep.data).toMatchObject({ recommendation: 'nego', repair_estimate: 1500000 });
+    expect(rep.data.items).toHaveLength(2);
+    expect(rep.data.photos).toHaveLength(1);
+    expect(rep.data.guarantee_until).toBeTruthy();
+  });
+
+  it('GET /orders/:id: lokasi detail hanya untuk pembeli setelah bayar', async () => {
+    const db = memDb(SEED);
+    const created = await (await POST(ctx('orders', 'POST', { vehicleId: 'civic-2021', type: 'standard', buyerId: 'u-budi' }, db))).json();
+    const id: string = created.data.orderId;
+
+    // sebelum bayar: pembeli sekalipun tidak dapat alamat detail
+    const before = await (await GET(ctx(`orders/${id}?viewerId=u-budi`, 'GET', null, db))).json();
+    expect(before.data.location).toBe('Jakarta Selatan');
+    expect(before.data.location_detail).toBeNull();
+    expect(before.data.location_revealed).toBe(false);
+
+    await POST(ctx(`orders/${id}/pay`, 'POST', { method: 'QRIS', buyerId: 'u-budi' }, db));
+
+    // setelah bayar: pembeli dapat detail, seller tidak
+    const after = await (await GET(ctx(`orders/${id}?viewerId=u-budi`, 'GET', null, db))).json();
+    expect(after.data.location_detail).toBe('Kalibata, Jakarta Selatan');
+    expect(after.data.location_revealed).toBe(true);
+
+    const seller = await (await GET(ctx(`orders/${id}?viewerId=u-hendra`, 'GET', null, db))).json();
+    expect(seller.data.location_detail).toBeNull();
+    expect(seller.data.location_revealed).toBe(false);
+    expect(JSON.stringify(seller)).not.toContain('Kalibata');
   });
 
   it('reset full tanpa key env → 404; dengan key → ok, users tetap', async () => {

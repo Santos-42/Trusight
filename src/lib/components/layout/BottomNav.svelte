@@ -49,9 +49,9 @@
   <div class="mx-auto grid max-w-7xl {cols} px-2 pb-[env(safe-area-inset-bottom)]">
     {#each items as it}
       {@const active = path === it.href || (it.href !== '/app/home' && it.href !== '/seller' && it.href !== '/inspector' && it.href !== '/admin' && path.startsWith(it.href))}
-      <a href={it.href} class="relative flex min-h-[68px] flex-col items-center justify-center gap-1 text-[11px] {active ? 'font-bold text-ink-900' : 'font-medium text-slate-400'}">
+      <a href={it.href} class="relative flex min-h-[68px] flex-col items-center justify-center gap-1 text-[0.6875rem] {active ? 'font-bold text-ink-900' : 'font-medium text-slate-400'}">
         {#if it.href === '/seller/schedule' && pendingCount}
-          <span class="absolute right-3 top-2 grid size-4.5 min-w-[18px] place-items-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">{pendingCount}</span>
+          <span class="absolute right-3 top-2 grid size-4.5 min-w-[18px] place-items-center rounded-full bg-red-600 px-1 text-[0.625rem] font-bold text-white">{pendingCount}</span>
         {/if}
         {#if active}
           <span class="grid size-11 place-items-center rounded-full bg-ink-900 text-white">

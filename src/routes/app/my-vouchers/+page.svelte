@@ -47,7 +47,7 @@
         <TicketPercent class="size-8 shrink-0 text-brand-600" />
         <div class="min-w-0 flex-1">
           <p class="font-extrabold">{v.code}</p>
-          <p class="truncate text-[13px] text-slate-500">{meta[v.code] ?? ''}</p>
+          <p class="truncate text-[0.8125rem] text-slate-500">{meta[v.code] ?? ''}</p>
           {#if v.used_at}<p class="text-xs text-slate-400">Dipakai • order {v.order_id}</p>{/if}
         </div>
         {#if v.used_at}<span class="pill">Terpakai</span>{:else}<span class="pill-green inline-flex items-center gap-1"><BadgeCheck class="size-4" /> Aktif</span>{/if}

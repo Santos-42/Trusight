@@ -27,7 +27,7 @@
 <svelte:head><title>OTP — TruSight</title></svelte:head>
 <div class="mx-auto max-w-md px-6 pb-10 pt-12">
   <a href="/login" class="ts-back" aria-label="Kembali"><ChevronLeft class="size-5" /></a>
-  <h1 class="ts-h mt-8 text-[28px]">OTP Verification</h1>
+  <h1 class="ts-h mt-8 text-[1.75rem]">OTP Verification</h1>
   <p class="mt-2 text-sm text-slate-500">Enter the verification code we just sent on your email address.</p>
   <div class="mt-8 flex justify-between gap-2">
     {#each digits as d, i}

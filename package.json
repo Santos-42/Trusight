@@ -11,7 +11,7 @@
     "lint": "prettier --check . && eslint .",
     "format": "prettier --write .",
     "test": "vitest run",
-    "db:local": "wrangler d1 migrations apply trusight-db --local",
+    "db:local": "wrangler d1 migrations apply trusight --local",
     "deploy": "npm run build && wrangler pages deploy .svelte-kit/cloudflare"
   },
   "devDependencies": {

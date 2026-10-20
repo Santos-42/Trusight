@@ -63,7 +63,7 @@
         <CircleUserRound class="size-10 shrink-0 text-slate-300" />
         <div class="min-w-0">
           <p class="truncate font-bold">{peer}</p>
-          <p class="text-[11px] tracking-wide text-slate-400">CALON PEMBELI</p>
+          <p class="text-[0.6875rem] tracking-wide text-slate-400">CALON PEMBELI</p>
         </div>
       </div>
     </ChatThread>

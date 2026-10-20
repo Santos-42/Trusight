@@ -48,3 +48,5 @@ next-env.d.ts
 /Ideate/
 /*.pdf
 /*.md
+/*.png
+/.commandcode

@@ -12,7 +12,7 @@
 <svelte:head><title>Reset Password — TruSight</title></svelte:head>
 <div class="mx-auto max-w-md px-6 pb-10 pt-12">
   <a href="/login" class="ts-back" aria-label="Kembali"><ChevronLeft class="size-5" /></a>
-  <h1 class="ts-h mt-8 text-[28px]">Create new password</h1>
+  <h1 class="ts-h mt-8 text-[1.75rem]">Create new password</h1>
   <p class="mt-2 text-sm text-slate-500">Your new password must be unique from those previously used.</p>
   <form class="mt-8 grid gap-4" on:submit|preventDefault={submit}>
     <input class="ts-field" placeholder="New Password" bind:value={pw} type="password" required />

@@ -78,7 +78,7 @@
     <a href="/seller" class="ts-back" aria-label="Kembali"><ChevronLeft class="size-5" /></a>
     <div>
       <h1 class="text-xl font-extrabold">Jadwal Inspeksi</h1>
-      <p class="text-[13px] text-slate-500">Semua permintaan yang perlu Anda setujui atau negosiasikan.</p>
+      <p class="text-[0.8125rem] text-slate-500">Semua permintaan yang perlu Anda setujui atau negosiasikan.</p>
     </div>
     {#if pending.length}<span class="pill-amber ml-auto">{pending.length} menunggu</span>{/if}
     {#if loaded && !live}<span class="pill-amber">Data contoh</span>{/if}
@@ -86,7 +86,7 @@
 
   <p class="ts-eyebrow">Menunggu Tindakan</p>
   {#if !loaded}
-    <div class="ts-card text-[13px] text-slate-500">Memuat permintaan…</div>
+    <div class="ts-card text-[0.8125rem] text-slate-500">Memuat permintaan…</div>
   {:else if !pending.length}
     <div class="ts-card text-center">
       <CalendarCheck class="mx-auto size-9 text-slate-300" />
@@ -100,7 +100,7 @@
         <p class="font-bold">{o.vehicle} <span class="text-slate-400">• {o.id}</span></p>
         <span class="pill-amber">Menunggu persetujuan</span>
       </div>
-      <div class="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-slate-500">
+      <div class="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.8125rem] text-slate-500">
         <span class="inline-flex items-center gap-1.5"><CircleUserRound class="size-4" /> {o.buyer}</span>
         <span>{o.type === 'fast-track' ? 'Fast-Track' : 'Standard'}</span>
         <span class="font-bold text-ink-900">{rupiah(o.total)}</span>
@@ -113,15 +113,15 @@
       </div>
       {#if openId === o.id}
         <div class="mt-3 grid gap-2 border-t border-slate-100 pt-3">
-          <p class="text-[13px] font-bold text-slate-500">Usulkan slot pengganti:</p>
+          <p class="text-[0.8125rem] font-bold text-slate-500">Usulkan slot pengganti:</p>
           {#each slots as s}
-            <button class="min-h-11 rounded-xl border px-4 text-left text-[13px] font-semibold hover:border-brand-400" on:click={() => guard(() => void doApprove(o.id, 'alternative', s), o.id)}>{s}</button>
+            <button class="min-h-11 rounded-xl border px-4 text-left text-[0.8125rem] font-semibold hover:border-brand-400" on:click={() => guard(() => void doApprove(o.id, 'alternative', s), o.id)}>{s}</button>
           {/each}
           <div class="flex flex-wrap items-center gap-2">
             <input type="date" bind:value={customDate} class="ts-field-sm flex-1" aria-label="Tanggal usulan" />
             <input type="time" bind:value={customTime} class="ts-field-sm w-32" aria-label="Jam usulan" />
             <button
-              class="min-h-11 rounded-xl border px-4 text-[13px] font-semibold hover:border-brand-400 disabled:opacity-40"
+              class="min-h-11 rounded-xl border px-4 text-[0.8125rem] font-semibold hover:border-brand-400 disabled:opacity-40"
               disabled={!customDate || !customTime}
               on:click={() => guard(() => void doApprove(o.id, 'alternative', `${customDate} • ${customTime} WIB`), o.id)}
             >Kirim Usulan</button>
@@ -143,7 +143,7 @@
         <p class="font-bold">{o.vehicle} <span class="text-slate-400">• {o.id}</span></p>
         <span class="pill-green">Dijadwalkan</span>
       </div>
-      <p class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-slate-500">
+      <p class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.8125rem] text-slate-500">
         <span>{o.slot ?? 'Slot disepakati'}</span>
         {#if o.inspector}<span class="inline-flex items-center gap-1.5"><CircleUserRound class="size-4" /> Inspektor: {o.inspector} (GPS Lock)</span>{/if}
       </p>
@@ -152,6 +152,6 @@
 
   <div class="ts-card flex items-center gap-3 !bg-ink-900 text-white">
     <BellRing class="size-6 shrink-0 text-white/80" />
-    <p class="text-[13px] text-white/80">Permintaan baru dari home juga langsung muncul di daftar ini.</p>
+    <p class="text-[0.8125rem] text-white/80">Permintaan baru dari home juga langsung muncul di daftar ini.</p>
   </div>
 </div>

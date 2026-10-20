@@ -16,17 +16,17 @@
       </div>
     </div>
     <div class="relative">
-      <h2 class="text-[28px] font-extrabold leading-snug">Beli mobil bekas<br />tanpa rasa <span class="text-brand-500">was-was.</span></h2>
-      <ul class="mt-6 grid gap-4 text-[14px]">
+      <h2 class="text-[1.75rem] font-extrabold leading-snug">Beli mobil bekas<br />tanpa rasa <span class="text-brand-500">was-was.</span></h2>
+      <ul class="mt-6 grid gap-4 text-[0.875rem]">
         <li class="flex items-start gap-3"><ShieldCheck class="mt-0.5 size-5 shrink-0 text-emerald-400" /><span><b>150-point surgical inspection</b> oleh verifikator bersertifikat.</span></li>
         <li class="flex items-start gap-3"><ClipboardCheck class="mt-0.5 size-5 shrink-0 text-emerald-400" /><span><b>Skor, estimasi perbaikan & rekomendasi</b> berbasis data.</span></li>
         <li class="flex items-start gap-3"><BadgeCheck class="mt-0.5 size-5 shrink-0 text-emerald-400" /><span><b>Garansi 30 hari</b> untuk mesin & transmisi.</span></li>
       </ul>
     </div>
     <div class="relative grid grid-cols-3 gap-3 border-t border-white/10 pt-5 text-center">
-      <div><p class="text-xl font-extrabold">1.105+</p><p class="text-[11px] text-white/55">Inspeksi</p></div>
-      <div><p class="flex items-center justify-center gap-1 text-xl font-extrabold"><Star class="size-4 fill-gold-400 text-gold-400" />4.9</p><p class="text-[11px] text-white/55">Rating</p></div>
-      <div><p class="text-xl font-extrabold">94</p><p class="text-[11px] text-white/55">Skor rata-rata</p></div>
+      <div><p class="text-xl font-extrabold">1.105+</p><p class="text-[0.6875rem] text-white/55">Inspeksi</p></div>
+      <div><p class="flex items-center justify-center gap-1 text-xl font-extrabold"><Star class="size-4 fill-gold-400 text-gold-400" />4.9</p><p class="text-[0.6875rem] text-white/55">Rating</p></div>
+      <div><p class="text-xl font-extrabold">94</p><p class="text-[0.6875rem] text-white/55">Skor rata-rata</p></div>
     </div>
   </aside>
   <div class="flex flex-1 flex-col lg:min-h-0 lg:items-center lg:justify-center lg:p-6 xl:p-10">

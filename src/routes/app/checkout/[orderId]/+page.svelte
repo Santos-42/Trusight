@@ -5,12 +5,18 @@
   import { ChevronLeft, CreditCard, QrCode, Landmark, Lock, BadgeCheck, TicketPercent } from '@lucide/svelte';
   import { api } from '$lib/api';
   import { getSession, requireAuth } from '$lib/guest';
+  import { findVehicle } from '$lib/mocks';
+  import { rupiah } from '$lib/format';
   $: orderId = $page.params.orderId;
   let method: 'CARD' | 'QRIS' | 'TRANSFER' = 'CARD', msg = '';
   let claimed: string[] = [];
   let voucher = '';
+  type OrderInfo = { id: string; vehicle_id?: string; vehicle?: string; type: string; status: string; total: number };
+  let order: OrderInfo | null = null;
   const usable = ['TRU20', 'HEMAT50'];
   onMount(async () => {
+    const o = await api.get<OrderInfo>(`/orders/${orderId}`);
+    if (o.ok) order = o.data;
     if (browser) {
       try { claimed = JSON.parse(localStorage.getItem('trusight_vouchers') ?? '[]'); } catch { /* abaikan */ }
     }
@@ -19,6 +25,8 @@
     const r = await api.get<{ code: string; used_at?: string | null }[]>(`/vouchers/mine?userId=${encodeURIComponent(uid)}`);
     if (r.ok && r.data.length) claimed = r.data.filter((v) => !v.used_at).map((v) => v.code);
   });
+  $: car = order?.vehicle_id ? findVehicle(order.vehicle_id) : null;
+  $: total = order?.total ?? 0;
   $: vouchers = claimed.filter((c) => usable.includes(c));
   const methods = [
     { id: 'CARD', icon: CreditCard },
@@ -47,22 +55,26 @@
     <div class="grid content-start gap-5">
       <div>
         <p class="ts-eyebrow">Inspection Summary</p>
-        <h1 class="ts-h mt-1 text-[26px]">Order Details</h1>
+        <h1 class="ts-h mt-1 text-[1.625rem]">Order Details</h1>
       </div>
       <div class="ts-card">
         <div class="flex gap-4">
-          <span class="grid size-20 shrink-0 place-items-center overflow-hidden rounded-2xl bg-ink-900 text-white"><img src="/vehicles/porsche-911-2022/hero.jpg" alt="Porsche 911 Carrera S 2022" class="h-full w-full object-cover" /></span>
+          <span class="grid size-20 shrink-0 place-items-center overflow-hidden rounded-2xl bg-ink-900 text-white">
+            {#if car}
+              <img src={car.cover} alt={car.title} class="h-full w-full object-cover" />
+            {/if}
+          </span>
           <div class="flex flex-1 items-start justify-between gap-2">
             <div>
-              <p class="font-bold">Fast Track Inspection</p>
-              <p class="text-[13px] text-slate-500">2022 Porsche<br />911 Carrera S</p>
+              <p class="font-bold">{order?.type === 'fast-track' ? 'Fast Track Inspection' : 'Standard Inspection'}</p>
+              <p class="text-[0.8125rem] text-slate-500">{car?.title ?? order?.vehicle ?? 'Kendaraan'}</p>
             </div>
-            <p class="font-bold text-brand-600">Rp....</p>
+            <p class="font-bold text-brand-600">{rupiah(total)}</p>
           </div>
         </div>
         <div class="mt-3 flex justify-end"><span class="pill-blue"><BadgeCheck class="size-3.5" /> PRIORITY QUEUE</span></div>
         <div class="my-3 h-px bg-slate-100"></div>
-        <div class="flex items-center justify-between"><p class="text-sm text-slate-500">Total Amount Due</p><p class="text-xl font-extrabold">Rp....</p></div>
+        <div class="flex items-center justify-between"><p class="text-sm text-slate-500">Total Amount Due</p><p class="text-xl font-extrabold">{rupiah(total)}</p></div>
         {#if vouchers.length}
           <div class="mt-3 grid gap-2">
             <p class="ts-eyebrow">Pakai voucher</p>
@@ -82,7 +94,7 @@
     <div class="grid content-start gap-5">
       <div>
         <p class="ts-eyebrow">Secure Transaction</p>
-        <h2 class="ts-h mt-1 text-[26px]">Payment Method</h2>
+        <h2 class="ts-h mt-1 text-[1.625rem]">Payment Method</h2>
       </div>
       <div class="grid grid-cols-3 gap-3 lg:grid-cols-3">
         {#each methods as m}

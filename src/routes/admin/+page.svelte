@@ -23,8 +23,8 @@
   <div class="flex flex-wrap items-start justify-between gap-3">
     <div>
       <p class="text-sm text-slate-500">TruSight Admin</p>
-      <h1 class="text-[24px] font-bold tracking-tight">Overview Dashboard</h1>
-      <p class="text-[13px] text-slate-500">Real-time statistics, inspection tracking, and inspector status.</p>
+      <h1 class="text-[1.5rem] font-bold tracking-tight">Overview Dashboard</h1>
+      <p class="text-[0.8125rem] text-slate-500">Real-time statistics, inspection tracking, and inspector status.</p>
     </div>
     <a href="/admin/orders" class="inline-flex min-h-11 items-center rounded-xl bg-ink-900 px-4 text-sm font-bold text-white">+ New Inspection Request</a>
   </div>

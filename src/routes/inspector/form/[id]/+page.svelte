@@ -55,7 +55,7 @@
       <div class="grid gap-3">
         {#each rows as r}
           <div class="flex items-center justify-between gap-3 rounded-2xl bg-white px-4 py-3.5 shadow-sm">
-            <p class="text-[14px] font-medium">{r.label}</p>
+            <p class="text-[0.875rem] font-medium">{r.label}</p>
             <span class={r.st === 'Normal' ? 'pill-green' : 'pill-red'}>{r.st}</span>
           </div>
         {/each}

@@ -51,7 +51,7 @@
       {/each}
     </div>
     {#key i}
-      <p class="mt-3 max-w-sm text-[15px] leading-relaxed text-ink-900">{texts[i]}</p>
+      <p class="mt-3 max-w-sm text-[0.9375rem] leading-relaxed text-ink-900">{texts[i]}</p>
     {/key}
   </div>
 
@@ -59,6 +59,6 @@
     <div class="h-px w-full bg-ink-900/70"></div>
     <a href="/login" class="btn-navy w-full">Login</a>
     <a href="/register" class="btn-outline w-full">Register</a>
-    <a href="/app/home" class="link-blue mt-2 text-[15px]">Continue as a guest</a>
+    <a href="/app/home" class="link-blue mt-2 text-[0.9375rem]">Continue as a guest</a>
   </div>
 </div>

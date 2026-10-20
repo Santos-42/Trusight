@@ -39,8 +39,8 @@
 <div class="grid gap-4">
   <div>
     <p class="text-sm text-slate-500">TruSight Admin</p>
-    <h1 class="text-[24px] font-bold tracking-tight">Inspection Orders</h1>
-    <p class="text-[13px] text-slate-500">Manage, track, and assign verifikators for used car inspections.</p>
+    <h1 class="text-[1.5rem] font-bold tracking-tight">Inspection Orders</h1>
+    <p class="text-[0.8125rem] text-slate-500">Manage, track, and assign verifikators for used car inspections.</p>
   </div>
   <div class="flex gap-2 overflow-x-auto pb-1">
     {#each tabs as t}
@@ -48,7 +48,7 @@
     {/each}
   </div>
   <div class="hidden overflow-auto rounded-[20px] bg-white shadow-sm md:block">
-    <table class="w-full text-[13px]">
+    <table class="w-full text-[0.8125rem]">
       <thead><tr class="text-left text-slate-400"><th class="p-4 font-semibold">ID</th><th class="p-4 font-semibold">Vehicle Model</th><th class="p-4 font-semibold">Customer</th><th class="p-4 font-semibold">Schedule</th><th class="p-4 font-semibold">Inspector</th><th class="p-4 font-semibold">Status</th><th class="p-4 font-semibold">Payment</th><th class="p-4 font-semibold">Action</th></tr></thead>
       <tbody>
         {#each filtered as r}

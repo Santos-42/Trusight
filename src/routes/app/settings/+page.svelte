@@ -3,6 +3,7 @@
   import { page } from '$app/stores';
   import { ChevronRight, CircleUserRound, CreditCard, LifeBuoy, LogOut, UserCog } from '@lucide/svelte';
   import { authed, clearSession, getSession, type Role } from '$lib/guest';
+  import FontSizePicker from '$lib/components/settings/FontSizePicker.svelte';
   $: path = $page.url.pathname;
   let email = '';
   let role: Role = 'buyer';
@@ -67,7 +68,7 @@
             <ChevronRight class="size-4 text-slate-300" />
           </button>
           {#if section === 'payment'}
-            <div class="grid gap-1 bg-slate-50 px-4 py-3 text-[13px] text-slate-600">
+            <div class="grid gap-1 bg-slate-50 px-4 py-3 text-[0.8125rem] text-slate-600">
               <p>VISA •••• 4242 (utama)</p>
               <p>QRIS • GoPay • Transfer bank</p>
             </div>
@@ -78,7 +79,7 @@
             <ChevronRight class="size-4 text-slate-300" />
           </button>
           {#if section === 'help'}
-            <div class="grid gap-1 bg-slate-50 px-4 py-3 text-[13px] text-slate-600">
+            <div class="grid gap-1 bg-slate-50 px-4 py-3 text-[0.8125rem] text-slate-600">
               <p>Help Center tersedia ≤1×24 jam.</p>
               <p>Komplain garansi via halaman Garansi.</p>
             </div>
@@ -87,6 +88,7 @@
       </div>
     {/if}
   {/if}
+  <FontSizePicker />
   {#if $authed}
     <button class="inline-flex min-h-12 items-center justify-center gap-2 justify-self-start rounded-xl bg-red-600 px-6 text-sm font-bold text-white hover:bg-red-700" on:click={logout}><LogOut class="size-4" /> Logout</button>
   {:else}

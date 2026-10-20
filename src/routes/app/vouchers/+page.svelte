@@ -48,9 +48,9 @@
   <div class="grid gap-3 sm:grid-cols-[repeat(auto-fill,minmax(300px,1fr))]">
     {#each vouchers as v}
       <div class="relative overflow-hidden rounded-[20px] bg-gradient-to-br {v.grad} p-5 text-white">
-        <p class="text-[11px] font-bold tracking-[0.18em]">VOUCHER • {v.code}</p>
+        <p class="text-[0.6875rem] font-bold tracking-[0.18em]">VOUCHER • {v.code}</p>
         <p class="mt-1 text-lg font-extrabold">{v.title}</p>
-        <p class="mt-1 text-[13px] text-white/80">{v.desc}</p>
+        <p class="mt-1 text-[0.8125rem] text-white/80">{v.desc}</p>
         <button
           class="mt-3 inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-bold disabled:opacity-60"
           disabled={claimed.includes(v.code)}

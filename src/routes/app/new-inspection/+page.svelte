@@ -5,14 +5,11 @@
   import { getSession, requireAuth } from '$lib/guest';
   import { PRICING } from '$lib/config';
   import { rupiah } from '$lib/format';
-  import { mockVehicles } from '$lib/mocks';
+  import { mockVehicles, matchVehicleByText } from '$lib/mocks';
   let vehicleId = 'civic-2021', type: 'standard' | 'fast-track' = 'fast-track', err = '', ok = '';
   let link = '', linkMsg = '', linkOk = false, checking = false;
-  const VEHICLE_OPTIONS = [
-    { id: 'civic-2021', label: 'Honda Civic Turbo 2021 — Kalibata' },
-    { id: 'porsche-911-2022', label: 'Porsche 911 Carrera S 2022 — Jakut' },
-    { id: 'avanza-2022', label: 'Avanza Veloz 2022 — Tebet' }
-  ];
+  // Label memakai locationArea (kota/kecamatan) — lokasi detail baru terbuka setelah bayar.
+  const VEHICLE_OPTIONS = mockVehicles.map((v) => ({ id: v.id, label: `${v.title} — ${v.locationArea}` }));
   // Kendaraan sudah dibawa dari Vehicle Detail (ORDER VERIFICATION) — tanpa pilih ulang.
   $: presetVehicle = $page.url.searchParams.get('vehicle');
   $: if (presetVehicle && VEHICLE_OPTIONS.some((v) => v.id === presetVehicle)) vehicleId = presetVehicle;
@@ -31,8 +28,7 @@
         linkOk = true;
         const slug = url.replace(/^https?:\/\//i, '').split(/[?#]/)[0];
         // Mock-detect: cocokkan katalog terdekat dari kata kunci URL
-        const low = url.toLowerCase();
-        const match = /911|porsche/.test(low) ? 'porsche-911-2022' : /avanza|veloz/.test(low) ? 'avanza-2022' : 'civic-2021';
+        const match = matchVehicleByText(url).id;
         linkMsg = `Terdeteksi dari link: ${slug}. Membuka detail…`;
         setTimeout(() => {
           location.href = `/app/vehicle/${match}?from=link&src=${encodeURIComponent(slug)}`;
@@ -64,15 +60,15 @@
   <div class="grid items-start gap-6 lg:grid-cols-2">
     <div>
       <p class="text-sm font-bold tracking-[0.3em] text-slate-500">NEW INSPECTION</p>
-      <h1 class="ts-h mt-1 text-[26px]">Secure your next investment with precision.</h1>
-      <p class="mt-1 text-[13px] text-slate-500">Provide the vehicle details below. Our certified experts will perform a clinical inspection.</p>
+      <h1 class="ts-h mt-1 text-[1.625rem]">Secure your next investment with precision.</h1>
+      <p class="mt-1 text-[0.8125rem] text-slate-500">Provide the vehicle details below. Our certified experts will perform a clinical inspection.</p>
     </div>
     <div class="ts-card grid gap-3">
       {#if vehicleLocked && lockedVehicle}
         <div class="flex items-start justify-between gap-2 rounded-2xl border border-brand-200 bg-brand-100/40 p-3">
           <div>
             <p class="text-xs text-slate-500">Kendaraan terpilih</p>
-            <p class="mt-0.5 font-bold">{lockedVehicle.title} — {lockedVehicle.location}</p>
+            <p class="mt-0.5 font-bold">{lockedVehicle.title} — {lockedVehicle.locationArea}</p>
           </div>
           <a href={`/app/vehicle/${vehicleId}`} class="text-xs font-bold text-brand-600">Ganti</a>
         </div>
@@ -98,7 +94,7 @@
           <input bind:value={link} placeholder="https://olx.co.id/…" class="ts-field flex-1" aria-label="Link mobil bekas" />
           <button class="shrink-0 rounded-xl bg-ink-900 px-4 text-sm font-bold text-white disabled:opacity-50" disabled={checking} on:click={checkLink}>{checking ? 'Checking…' : 'Check'}</button>
         </div>
-        {#if linkMsg}<p class="mt-2 text-[13px] {linkOk ? 'text-emerald-700' : 'text-slate-500'}">{linkMsg}</p>{/if}
+        {#if linkMsg}<p class="mt-2 text-[0.8125rem] {linkOk ? 'text-emerald-700' : 'text-slate-500'}">{linkMsg}</p>{/if}
       </div>
     </div>
   </div>

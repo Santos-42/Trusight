@@ -12,10 +12,10 @@
       <span class="grid h-full place-items-center"><Car class="size-24 opacity-90" /></span>
     {/if}
     <span class="pill-solid absolute left-3 top-3"><BadgeCheck class="size-3.5" /> TRUSIGHT VERIFIED</span>
-    <span class="absolute bottom-3 right-3 rounded-md bg-black/60 px-2 py-1 text-[10px] font-bold">OLX</span>
+    <span class="absolute bottom-3 right-3 rounded-md bg-black/60 px-2 py-1 text-[0.625rem] font-bold">OLX</span>
   </div>
   <div class="flex items-center justify-between gap-2 px-4 py-3.5 lg:grid lg:gap-1 lg:py-4">
-    <p class="text-[16px] font-bold lg:line-clamp-2 lg:min-h-[3rem]">{v.title}</p>
-    <p class="text-[16px] font-bold text-brand-600 lg:text-lg">{rupiah(v.price)}</p>
+    <p class="text-[1rem] font-bold lg:line-clamp-2 lg:min-h-[3rem]">{v.title}</p>
+    <p class="text-[1rem] font-bold text-brand-600 lg:text-lg">{rupiah(v.price)}</p>
   </div>
 </a>

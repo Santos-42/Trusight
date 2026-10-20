@@ -2,10 +2,10 @@
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import { requireAuth } from '$lib/guest';
-  import { ChevronLeft, BadgeCheck, Car, Fuel, MapPin, CheckCircle2, Cog } from '@lucide/svelte';
+  import { ChevronLeft, BadgeCheck, Car, Fuel, MapPin, CheckCircle2, Cog, Lock } from '@lucide/svelte';
   import { mockVehicles } from '$lib/mocks';
   import { rupiah, km } from '$lib/format';
-  $: id = $page.params.id;
+  $: id = $page.params.id ?? '';
   $: v = mockVehicles.find(x => x.id === id) ?? mockVehicles[0];
   $: fromLink = $page.url.searchParams.get('from') === 'link';
   $: linkSrc = $page.url.searchParams.get('src') ?? '';
@@ -36,7 +36,7 @@
 
   {#if fromLink}
     <div class="ts-card !border-brand-200 !bg-brand-50 lg:col-span-3">
-      <p class="text-sm"><b>Terdeteksi dari link{linkSrc ? `: ${linkSrc}` : ''}.</b> Foto, nama mobil, dan lokasi penjual di bawah ini mengikuti katalog terdekat (mode demo).</p>
+      <p class="text-sm"><b>Terdeteksi dari link{linkSrc ? `: ${linkSrc}` : ''}.</b> Foto, nama mobil, dan area lokasi penjual di bawah ini mengikuti katalog terdekat (mode demo).</p>
     </div>
   {/if}
   <div class="grid gap-4 lg:col-span-2">
@@ -67,26 +67,33 @@
       <button aria-label="Sebelumnya" on:click={() => (slide = (slide - 1 + slides.length) % slides.length)} class="absolute left-2 top-1/2 hidden size-9 -translate-y-1/2 place-items-center rounded-full bg-black/40 text-white lg:grid">‹</button>
       <button aria-label="Berikutnya" on:click={() => (slide = (slide + 1) % slides.length)} class="absolute right-2 top-1/2 hidden size-9 -translate-y-1/2 place-items-center rounded-full bg-black/40 text-white lg:grid">›</button>
     </div>
-    <h1 class="text-[26px] font-bold tracking-tight">{v.title}</h1>
+    <h1 class="text-[1.625rem] font-bold tracking-tight">{v.title}</h1>
     <div class="grid grid-cols-2 gap-3">
       <div class="ts-card"><p class="ts-eyebrow">Transmission</p><p class="mt-1 font-bold">Manual</p><Cog class="mt-2 size-6 text-brand-600" /></div>
       <div class="ts-card"><p class="ts-eyebrow">Fuel Type</p><p class="mt-1 font-bold">Gas</p><Fuel class="mt-2 size-6 text-brand-600" /></div>
     </div>
-    <a class="ts-card flex items-center justify-between" href="https://www.google.com/maps/search/?api=1&query={encodeURIComponent(v.location)}" target="_blank" rel="noreferrer" title="Buka di Google Maps">
-      <div><p class="ts-eyebrow">Location</p><p class="mt-1 font-bold">{v.location}</p><p class="text-[11px] text-slate-400">{v.year} MODEL • {km(v.mileage).toUpperCase()}</p></div>
-      <MapPin class="size-7 text-brand-600" />
-    </a>
+    <div class="ts-card flex items-center justify-between gap-3">
+      <div class="min-w-0">
+        <p class="ts-eyebrow">Location</p>
+        <p class="mt-1 font-bold">{v.locationArea}</p>
+        <p class="mt-1.5 flex items-center gap-1.5 text-[0.6875rem] text-slate-400">
+          <Lock class="size-3.5 shrink-0" /> Lokasi detail tersembunyi • terbuka setelah pembayaran
+        </p>
+        <p class="mt-1 text-[0.6875rem] text-slate-400">{v.year} MODEL • {km(v.mileage).toUpperCase()}</p>
+      </div>
+      <MapPin class="size-7 shrink-0 text-slate-300" />
+    </div>
   </div>
 
   <div class="grid content-start gap-4">
     <div class="ts-card">
       <p class="ts-eyebrow">Asking Price</p>
-      <p class="mt-1 text-[28px] font-extrabold text-brand-600">{rupiah(v.price)}</p>
-      <p class="text-[11px] text-slate-400">EXCL. TAX • OLX • VERIFIED PARTNER</p>
+      <p class="mt-1 text-[1.75rem] font-extrabold text-brand-600">{rupiah(v.price)}</p>
+      <p class="text-[0.6875rem] text-slate-400">EXCL. TAX • OLX • VERIFIED PARTNER</p>
     </div>
     <div class="rounded-[20px] bg-gradient-to-br from-brand-600 to-brand-700 p-5 text-white">
       <p class="flex items-center gap-2 font-bold"><CheckCircle2 class="size-5" /> VERIFICATION PASSED</p>
-      <p class="mt-1 text-[13px] text-white/85">150 Point Inspection Passed by TruSight Certified Verifier.</p>
+      <p class="mt-1 text-[0.8125rem] text-white/85">150 Point Inspection Passed by TruSight Certified Verifier.</p>
     </div>
     <button class="btn-navy hidden w-full lg:inline-flex" on:click={order}>ORDER VERIFICATION</button>
   </div>

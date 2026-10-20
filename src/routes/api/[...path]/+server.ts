@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { mockHandle } from '$lib/mockApi';
 import {
-  approveOrder, checkin, claimVoucher, createOrder, ensureConversation, getMe, getOrder, getReport,
+  approveOrder, canRevealLocation, checkin, claimVoucher, createOrder, ensureConversation, getMe, getOrder, getReportDetail,
   listConversations, listMessages, listOrders, listReports, listVouchers, postMessage, publishReport,
   quoteVoucher, resetDemo, submitInspection, uid, type Db
 } from '$lib/server/d1';
@@ -30,7 +30,7 @@ async function handleAuth(action: string, body: Record<string, unknown>, penv: P
       const { name, email, password } = body as Record<string, string>;
       if (!name || !email || !password) return err('VALIDATION_ERROR', 'Nama, email, password wajib diisi');
       if (String(password).length < 8) return err('VALIDATION_ERROR', 'Password minimal 8 karakter');
-      // Register selalu buyer (inspektur via request-account, admin tak bisa daftar).
+      // Register selalu buyer (inspektor via request-account, admin tak bisa daftar).
       if (!DB) return ok({ user: { id: 'u-mock', name, email, role: 'buyer', trust_score: 0 } });
       try {
         const id = uid('U');
@@ -183,7 +183,12 @@ async function handleLive(path: string, method: string, body: Record<string, unk
     if (seg[0] === 'orders' && seg[1] && method === 'GET') {
       const o = await getOrder(DB, seg[1]);
       if (!o) return err('NOT_FOUND', 'Order tidak ditemukan', 404);
-      return ok(o);
+      // PRIVASI LOKASI: alamat detail hanya disurface untuk pembeli/inspektor order ini
+      // dan hanya setelah pembayaran. Selain itu sengaja dikirim null.
+      const viewerId = query.get('viewerId') ?? '';
+      const reveal = await canRevealLocation(DB, seg[1], viewerId);
+      const { location_detail, ...rest } = o as Record<string, unknown>;
+      return ok({ ...rest, location_detail: reveal ? location_detail : null, location_revealed: reveal });
     }
 
     // --- vouchers ---
@@ -223,7 +228,7 @@ async function handleLive(path: string, method: string, body: Record<string, unk
       return ok(await publishReport(DB, seg[1]));
     }
     if (seg[0] === 'reports' && seg[1] && method === 'GET') {
-      const r = await getReport(DB, seg[1]);
+      const r = await getReportDetail(DB, seg[1]);
       if (!r) return err('NOT_FOUND', 'Report tidak ditemukan', 404);
       return ok(r);
     }

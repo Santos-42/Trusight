@@ -28,20 +28,20 @@
   <div class="shrink-0 pb-2"><slot name="header" /></div>
   <div bind:this={box} class="flex min-h-0 flex-1 flex-col overflow-y-auto">
     <div class="mt-auto grid gap-2 py-1">
-      {#if topNote}<p class="mx-auto rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-500">{topNote}</p>{/if}
+      {#if topNote}<p class="mx-auto rounded-full bg-slate-100 px-3 py-1 text-[0.6875rem] font-semibold text-slate-500">{topNote}</p>{/if}
       {#each messages as m}
         {#if m.me}
-          <div class="max-w-[85%] justify-self-end rounded-2xl rounded-tr-md bg-brand-600 p-3 text-[13px] text-white">
+          <div class="max-w-[85%] justify-self-end rounded-2xl rounded-tr-md bg-brand-600 p-3 text-[0.8125rem] text-white">
             {m.text}
-            {#if m.time}<p class="mt-1 text-right text-[11px] text-brand-100">{m.time} <b class="font-extrabold text-sky-200">✓✓</b></p>{/if}
+            {#if m.time}<p class="mt-1 text-right text-[0.6875rem] text-brand-100">{m.time} <b class="font-extrabold text-sky-200">✓✓</b></p>{/if}
           </div>
         {:else}
-          <div class="max-w-[85%] justify-self-start rounded-2xl rounded-tl-md bg-white p-3 text-[13px] shadow-sm ring-1 ring-slate-100">
+          <div class="max-w-[85%] justify-self-start rounded-2xl rounded-tl-md bg-white p-3 text-[0.8125rem] shadow-sm ring-1 ring-slate-100">
             {#if m.file}
               <p class="flex items-center gap-2 font-semibold"><FileText class="size-5 text-teal-600" /> {m.file.name}</p>
-              <p class="ml-7 text-[11px] text-slate-400">{m.file.meta}</p>
+              <p class="ml-7 text-[0.6875rem] text-slate-400">{m.file.meta}</p>
             {:else}{m.text}{/if}
-            {#if m.time}<p class="mt-1 flex items-center justify-end gap-1 text-[11px] text-slate-400">{#if m.file}<Download class="size-4 text-teal-600" />{/if} {m.time}</p>{/if}
+            {#if m.time}<p class="mt-1 flex items-center justify-end gap-1 text-[0.6875rem] text-slate-400">{#if m.file}<Download class="size-4 text-teal-600" />{/if} {m.time}</p>{/if}
           </div>
         {/if}
       {/each}
