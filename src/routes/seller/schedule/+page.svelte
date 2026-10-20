@@ -15,6 +15,12 @@
     { id: 'TS-61200', vehicle: 'Toyota Fortuner VRZ 2020', buyer: 'Rian F.', type: 'standard', status: 'scheduled', total: 299000, created_at: '2026-06-01', slot: 'Kamis, 4 Juni • 14:00 WIB', inspector: 'Budi Santoso' }
   ];
   let rows: Row[] = [];
+  // Permintaan "lihat mobil" dari calon pembeli (order rahasia). Terpisah dari
+  // `rows` di atas yang hanya berisi order purna-beli.
+  type Viewing = { request_id: string; vehicle: string; requester: string; slot: string; status: string; location?: string };
+  let viewings: Viewing[] = [];
+  let openView: string | null = null;
+  let viewMsg: Record<string, string> = {};
   let live = false;
   let loaded = false;
   let openId: string | null = null;
@@ -26,6 +32,9 @@
   onMount(async () => {
     const uid = getSession()?.id;
     if (uid) {
+      const v = await api.get<Viewing[]>(`/viewings/incoming?sellerId=${encodeURIComponent(uid)}`);
+      if (v.ok) viewings = v.data;
+
       const r = await api.get<Row[]>(`/orders/incoming?sellerId=${encodeURIComponent(uid)}`);
       if (r.ok) {
         live = true;
@@ -53,6 +62,23 @@
   function guard(fn: () => void, id: string) {
     requireAuth(fn, `/seller/schedule?order=${encodeURIComponent(id)}`);
   }
+  /** Balas permintaan lihat mobil: setujui slot yang diajukan, atau usulkan waktu lain. */
+  async function doViewing(requestId: string, action: 'approve' | 'alternative', slot?: string) {
+    const r = await api.post<{ status: string; slot: string }>(
+      `/viewings/${encodeURIComponent(requestId)}/respond`,
+      { action, slot }
+    );
+    if (r.ok) {
+      viewMsg[requestId] = action === 'approve'
+        ? `Waktu lihat disetujui (${r.data.slot}). Calon pembeli dinotifikasi.`
+        : `Usulan waktu baru terkirim: ${r.data.slot}.`;
+      viewings = viewings.map((x) => (x.request_id === requestId ? { ...x, status: r.data.status, slot: r.data.slot } : x));
+      openView = null;
+    } else {
+      viewMsg[requestId] = r.error.message;
+    }
+    viewings = viewings;
+  }
   async function doApprove(id: string, action: 'approve' | 'alternative', slot?: string) {
     const r = await api.post<{ status: string; slot: string }>(
       `/orders/${encodeURIComponent(id)}/approve`,
@@ -77,12 +103,45 @@
   <div class="flex items-center gap-3">
     <a href="/seller" class="ts-back" aria-label="Kembali"><ChevronLeft class="size-5" /></a>
     <div>
-      <h1 class="text-xl font-extrabold">Jadwal Inspeksi</h1>
-      <p class="text-[0.8125rem] text-slate-500">Semua permintaan yang perlu Anda setujui atau negosiasikan.</p>
+      <h1 class="text-xl font-extrabold">Jadwal Lihat Mobil</h1>
+      <p class="text-[0.8125rem] text-slate-500">Atur waktu calon pembeli melihat mobil Anda.</p>
     </div>
     {#if pending.length}<span class="pill-amber ml-auto">{pending.length} menunggu</span>{/if}
     {#if loaded && !live}<span class="pill-amber">Data contoh</span>{/if}
   </div>
+
+  {#if viewings.length}
+    <p class="ts-eyebrow">Permintaan Lihat Mobil</p>
+    {#each viewings as v (v.request_id)}
+      <div class="ts-card {openView === v.request_id ? 'ring-2 ring-brand-400' : ''}">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <p class="font-bold">{v.vehicle}</p>
+          <span class={v.status === 'approved' ? 'pill-green' : v.status === 'proposed' ? 'pill-blue' : 'pill-amber'}>
+            {v.status === 'approved' ? 'Waktu disetujui' : v.status === 'proposed' ? 'Usulan terkirim' : 'Menunggu waktu lihat'}
+          </span>
+        </div>
+        <div class="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.8125rem] text-slate-500">
+          <span class="inline-flex items-center gap-1.5"><CircleUserRound class="size-4" /> {v.requester}</span>
+          <span class="inline-flex items-center gap-1.5"><CalendarCheck class="size-4" /> {v.slot}</span>
+        </div>
+        {#if viewMsg[v.request_id]}<p class="mt-2 text-sm text-emerald-700">{viewMsg[v.request_id]}</p>{/if}
+        <div class="mt-3 flex gap-2">
+          <button class="min-h-11 flex-1 rounded-xl bg-brand-600 font-bold text-white" on:click={() => guard(() => void doViewing(v.request_id, 'approve', v.slot), `view-${v.request_id}`)}>Setujui Waktu</button>
+          <button class="min-h-11 flex-1 rounded-xl border font-bold" on:click={() => (openView = openView === v.request_id ? null : v.request_id)}>Usul Waktu Lain</button>
+        </div>
+        {#if openView === v.request_id}
+          <div class="mt-3 grid gap-2 border-t border-slate-100 pt-3">
+            <p class="text-[0.8125rem] font-bold text-slate-500">Usulkan waktu lain:</p>
+            <div class="flex flex-wrap gap-2">
+              {#each slots as s}
+                <button class="min-h-11 rounded-xl border px-3 text-[0.8125rem] font-semibold" on:click={() => doViewing(v.request_id, 'alternative', s)}>{s}</button>
+              {/each}
+            </div>
+          </div>
+        {/if}
+      </div>
+    {/each}
+  {/if}
 
   <p class="ts-eyebrow">Menunggu Tindakan</p>
   {#if !loaded}
@@ -98,7 +157,7 @@
     <div class="ts-card {openId === o.id ? 'ring-2 ring-brand-400' : ''}">
       <div class="flex flex-wrap items-center justify-between gap-2">
         <p class="font-bold">{o.vehicle} <span class="text-slate-400">• {o.id}</span></p>
-        <span class="pill-amber">Menunggu persetujuan</span>
+        <span class="pill-amber">Menunggu waktu lihat</span>
       </div>
       <div class="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.8125rem] text-slate-500">
         <span class="inline-flex items-center gap-1.5"><CircleUserRound class="size-4" /> {o.buyer}</span>
@@ -108,8 +167,8 @@
       </div>
       {#if msg[o.id]}<p class="mt-2 text-sm text-emerald-700">{msg[o.id]}</p>{/if}
       <div class="mt-3 flex gap-2">
-        <button class="min-h-11 flex-1 rounded-xl bg-brand-600 font-bold text-white" on:click={() => guard(() => void doApprove(o.id, 'approve'), o.id)}>Setujui Jadwal</button>
-        <button class="min-h-11 flex-1 rounded-xl border font-bold" on:click={() => (openId = openId === o.id ? null : o.id)}>Negosiasi Jadwal</button>
+        <button class="min-h-11 flex-1 rounded-xl bg-brand-600 font-bold text-white" on:click={() => guard(() => void doApprove(o.id, 'approve'), o.id)}>Setujui Waktu</button>
+        <button class="min-h-11 flex-1 rounded-xl border font-bold" on:click={() => (openId = openId === o.id ? null : o.id)}>Usul Waktu Lain</button>
       </div>
       {#if openId === o.id}
         <div class="mt-3 grid gap-2 border-t border-slate-100 pt-3">
@@ -152,6 +211,6 @@
 
   <div class="ts-card flex items-center gap-3 !bg-ink-900 text-white">
     <BellRing class="size-6 shrink-0 text-white/80" />
-    <p class="text-[0.8125rem] text-white/80">Permintaan baru dari home juga langsung muncul di daftar ini.</p>
+    <p class="text-[0.8125rem] text-white/80">Ajukan waktu lain bila slot yang dipilih tidak cocok — calon pembeli akan menyesuaikan.</p>
   </div>
 </div>

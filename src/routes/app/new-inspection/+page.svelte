@@ -40,12 +40,14 @@
   }
   async function doSubmit() {
     err = ''; ok = '';
-    const r = await api.post<{ orderId: string; total: number; sellerId?: string }>('/orders', { vehicleId, type, buyerId: getSession()?.id ?? 'u-mock' });
-    if (!r.ok) { err = r.error.message; return; }
     const buyerId = getSession()?.id ?? 'u-mock';
-    if (r.data.sellerId) {
-      await api.post('/conversations', { orderId: r.data.orderId, buyerId, sellerId: r.data.sellerId });
-    }
+    // Halaman ini selalu diakses dari listing/detail kendaraan → mode 'covert'.
+    // Seller tidak boleh tahu order ini ada.
+    const r = await api.post<{ orderId: string; total: number }>('/orders', { vehicleId, type, buyerId, mode: 'covert' });
+    if (!r.ok) { err = r.error.message; return; }
+    // Thread inspeksi: pembeli <-> inspektor, TANPA seller. Dulu blok ini mengirim
+    // sellerId dan membuat seller langsung tahu ada inspeksi — jangan dikembalikan.
+    await api.post('/conversations', { orderId: r.data.orderId, buyerId, kind: 'inspection' });
     location.href = `/app/checkout/${r.data.orderId.replace('#', '')}`;
   }
   function submit() {

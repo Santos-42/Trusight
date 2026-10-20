@@ -16,13 +16,33 @@ export type MockVehicle = {
   price: number;
   location: string;
   locationArea: string;
-  status: 'listed' | 'certified';
+  status: 'listed' | 'certified' | 'sold';
   score: number | null;
   grade: string | null;
   recommendation: string | null;
   cover: string;
   coverR2: string | null;
 };
+
+/**
+ * Hasil inspeksi hanya boleh diperlihatkan SETELAH mobil terjual.
+ * Selama masih dijual, seller tidak boleh tahu ada yang menginspeksi mobilnya —
+ * jadi semua field hasil dikosongkan dari payload yang sampai ke UI seller.
+ */
+export function certificationBadge(v: MockVehicle | null | undefined): {
+  revealed: boolean;
+  score: number | null;
+  grade: string | null;
+  recommendation: string | null;
+} {
+  const sold = v?.status === 'sold';
+  return {
+    revealed: sold,
+    score: sold ? (v?.score ?? null) : null,
+    grade: sold ? (v?.grade ?? null) : null,
+    recommendation: sold ? (v?.recommendation ?? null) : null
+  };
+}
 
 export const mockVehicles: MockVehicle[] = [
   {

@@ -23,7 +23,14 @@ const num5 = () => Math.floor(10000 + Math.random() * 89999);
 
 export const PRICING: Record<string, number> = { standard: 299000, 'fast-track': 499000 };
 
-export interface OrderInput { vehicleId: string; type: string; buyerId: string }
+/** Mode order.
+ *  - `covert`        : inspeksi mobil yang sedang dijual. Seller tidak boleh tahu.
+ *  - `post-purchase` : pembeli sudah memiliki mobil (garansi / sertifikasi ulang). Seller ikut tahu.
+ *  Ditentukan otomatis dari jalur order — lihat createOrder. */
+export type OrderMode = 'covert' | 'post-purchase';
+
+export interface OrderInput { vehicleId: string; type: string; buyerId: string; mode?: OrderMode }
+
 export async function createOrder(db: Db, b: OrderInput) {
   const v = await qOne<{ price: number; seller_id: string }>(db, 'SELECT price, seller_id FROM vehicles WHERE id=?', b.vehicleId);
   if (!v) throw Object.assign(new Error('Kendaraan tidak ditemukan'), { code: 'NOT_FOUND' });
@@ -38,10 +45,14 @@ export async function createOrder(db: Db, b: OrderInput) {
     );
   }
   const type = b.type === 'fast-track' ? 'fast-track' : 'standard';
+  // MODE OTOMATIS dari jalur masuknya. Order dari listing/detail kendaraan selalu
+  // 'covert'; hanya alur purna-beli (garansi / sertifikasi) yang mengirim
+  // 'post-purchase' secara eksplisit. Buyer tidak pernah ditanya.
+  const mode: OrderMode = b.mode === 'post-purchase' ? 'post-purchase' : 'covert';
   const id = `TS-${num5()}`;
-  await exec(db, 'INSERT INTO orders (id, buyer_id, vehicle_id, type, status, total) VALUES (?,?,?,?,?,?)',
-    id, b.buyerId, b.vehicleId, type, 'pending', PRICING[type]);
-  return { orderId: id, total: PRICING[type], status: 'pending', sellerId: v.seller_id };
+  await exec(db, 'INSERT INTO orders (id, buyer_id, vehicle_id, type, status, total, mode) VALUES (?,?,?,?,?,?,?)',
+    id, b.buyerId, b.vehicleId, type, 'pending', PRICING[type], mode);
+  return { orderId: id, total: PRICING[type], status: 'pending', sellerId: v.seller_id, mode };
 }
 
 export interface OrderFilter { buyerId?: string; sellerId?: string; inspectorId?: string; status?: string }
@@ -49,7 +60,7 @@ export function listOrders(db: Db, f: OrderFilter) {
   // PRIVASI LOKASI: hanya v.location_area (kota/kecamatan) yang pernah dikirim
   // lewat list. Lokasi detail sengaja tidak dipilih di sini supaya tidak bocor ke
   // seller lewat /orders/incoming — tidak peduli apa pun filter-nya.
-  let sql = `SELECT o.id, o.buyer_id, o.vehicle_id, o.type, o.status, o.total, o.created_at,
+  let sql = `SELECT o.id, o.buyer_id, o.vehicle_id, o.type, o.status, o.total, o.created_at, o.mode,
     v.title AS vehicle, v.location_area AS location, ub.name AS buyer, us.name AS seller, rep.id AS report_id
     FROM orders o JOIN vehicles v ON v.id=o.vehicle_id
     LEFT JOIN users ub ON ub.id=o.buyer_id LEFT JOIN users us ON us.id=v.seller_id
@@ -57,7 +68,14 @@ export function listOrders(db: Db, f: OrderFilter) {
   const where: string[] = [];
   const p: unknown[] = [];
   if (f.buyerId) { where.push('o.buyer_id=?'); p.push(f.buyerId); }
-  if (f.sellerId) { where.push('v.seller_id=?'); p.push(f.sellerId); }
+  if (f.sellerId) {
+    // RAHASIA: seller hanya pernah melihat order purna-beli. Order covert tidak
+    // muncul di /orders/incoming — penyembunyiannya di SQL, bukan di UI, supaya
+    // tidak bisa dibuka lewat API. Untuk order covert seller tetap menerima
+    // "permintaan lihat mobil" lewat listViewingRequests, tanpa konteks inspeksi.
+    where.push('v.seller_id=?'); p.push(f.sellerId);
+    where.push("o.mode='post-purchase'");
+  }
   if (f.status && f.status !== 'all') { where.push('o.status=?'); p.push(f.status); }
   if (f.inspectorId) {
     sql += ' JOIN schedules s ON s.order_id=o.id';
@@ -112,9 +130,16 @@ export async function getOrder(db: Db, id: string): Promise<Record<string, unkno
 }
 
 export interface ApproveInput { orderId: string; inspectorId: string; action: 'approve' | 'alternative'; slot?: string }
+/** Alur purna-beli: seller approve / negosiasi jadwal inspeksi.
+ *  Order COVERT ditolak — untuk itu dipakai requestViewing (inspektor menyamar
+ *  sebagai calon pembeli), supaya seller tidak pernah tahu ada inspeksi. */
 export async function approveOrder(db: Db, b: ApproveInput) {
-  const o = await qOne<{ buyer_id: string; vehicle_id: string }>(db, 'SELECT buyer_id, vehicle_id FROM orders WHERE id=?', b.orderId);
+  const o = await qOne<{ buyer_id: string; vehicle_id: string; mode: string }>(db,
+    'SELECT buyer_id, vehicle_id, mode FROM orders WHERE id=?', b.orderId);
   if (!o) throw Object.assign(new Error('Order tidak ditemukan'), { code: 'NOT_FOUND' });
+  if (o.mode !== 'post-purchase') {
+    throw Object.assign(new Error('Order ini tidak memerlukan persetujuan penjual.'), { code: 'FORBIDDEN', status: 403 });
+  }
   await exec(db, 'UPDATE orders SET status=? WHERE id=?', 'scheduled', b.orderId);
   const slot = b.slot ?? (b.action === 'alternative' ? 'usulan penjadwalan ulang' : 'menunggu konfirmasi');
   const inspectorId = b.inspectorId || 'u-bsantoso';
@@ -217,13 +242,88 @@ export async function publishReport(db: Db, id: string) {
   return getReport(db, id);
 }
 
-export async function ensureConversation(db: Db, b: { orderId: string; buyerId: string; sellerId: string; inspectorId?: string }) {
-  const ex = await qOne<{ id: string }>(db, 'SELECT id FROM conversations WHERE order_id=?', b.orderId);
+export type ConversationKind = 'inspection' | 'sale';
+
+/**
+ * Satu order bisa punya LEBIH DARI SATU thread, dipisah `kind` supaya obrolan soal
+ * inspeksi tidak bocor ke seller:
+ *   - `inspection` : pembeli <-> inspektor. `seller_id` memakai '' (bukan NULL, karena
+ *                    kolomnya NOT NULL — lihat catatan di migrations/004_order_mode.sql).
+ *   - `sale`       : pembeli <-> penjual. Murni jual-beli.
+ */
+export async function ensureConversation(
+  db: Db,
+  b: { orderId: string; buyerId: string; sellerId?: string; inspectorId?: string; kind?: ConversationKind }
+) {
+  const kind: ConversationKind = b.kind === 'inspection' ? 'inspection' : 'sale';
+  const ex = await qOne<{ id: string }>(db, 'SELECT id FROM conversations WHERE order_id=? AND kind=?', b.orderId, kind);
   if (ex) return { conversationId: ex.id, created: false };
   const id = uid('C');
-  await exec(db, 'INSERT INTO conversations (id, order_id, buyer_id, seller_id, inspector_id) VALUES (?,?,?,?,?)',
-    id, b.orderId, b.buyerId, b.sellerId, b.inspectorId ?? null);
+  // sellerId '' = tidak ada penjual. `listConversations` memakai `c.seller_id=?`
+  // dengan id user sungguhan, jadi '' tidak akan pernah cocok — thread inspeksi
+  // tetap tak terlihat oleh seller.
+  await exec(db, 'INSERT INTO conversations (id, order_id, buyer_id, seller_id, inspector_id, kind) VALUES (?,?,?,?,?,?)',
+    id, b.orderId, b.buyerId, b.sellerId ?? '', b.inspectorId ?? null, kind);
   return { conversationId: id, created: true };
+}
+
+/** Thread inspeksi: pembeli <-> inspektor, TANPA seller. */
+export function createInspectionThread(db: Db, b: { orderId: string; buyerId: string; inspectorId?: string }) {
+  return ensureConversation(db, { ...b, kind: 'inspection' });
+}
+
+/**
+ * Inspektor mengajukan "mau lihat mobil" ke seller — TANPA identitas TruSight.
+ * Inilah cara akses untuk order covert: di mata seller ini calon pembeli biasa,
+ * bukan permintaan inspeksi.
+ */
+export async function requestViewing(db: Db, b: { orderId: string; inspectorId: string; slot?: string }) {
+  const o = await qOne<{ id: string }>(db, 'SELECT id FROM orders WHERE id=?', b.orderId);
+  if (!o) throw Object.assign(new Error('Order tidak ditemukan'), { code: 'NOT_FOUND' });
+  const slot = b.slot ?? 'usulan waktu lihat';
+  await exec(db, `INSERT INTO schedules (id, order_id, proposed_by, datetime, inspector_id, status)
+    VALUES (?,?,?,?,?,?)`, uid('SCH'), b.orderId, 'inspector', slot, b.inspectorId || 'u-bsantoso', 'proposed');
+  return { orderId: b.orderId, status: 'proposed', slot };
+}
+
+/**
+ * Daftar "permintaan lihat mobil" untuk seller. Sengaja TIDAK membawa identitas order,
+ * tipe inspeksi, atau apa pun yang mengarah ke TruSight — seller cukup tahu ada
+ * calon pembeli yang mau melihat mobilnya.
+ */
+export function listViewingRequests(db: Db, sellerId: string) {
+  return qAll(db, `SELECT s.id AS request_id, s.datetime AS slot, s.status,
+      v.id AS vehicle_id, v.title AS vehicle, v.location_area AS location, v.price,
+      u.name AS requester
+    FROM schedules s
+    JOIN orders o ON o.id=s.order_id
+    JOIN vehicles v ON v.id=o.vehicle_id
+    LEFT JOIN users u ON u.id=s.inspector_id
+    WHERE v.seller_id=? AND s.proposed_by='inspector' AND o.mode='covert'
+    ORDER BY s.rowid DESC`, sellerId);
+}
+
+/**
+ * Seller membalas permintaan "lihat mobil": setujui slot, atau usulkan waktu lain.
+ * Murni atur janji lihat mobil — tidak ada konteks inspeksi yang terlibat.
+ */
+export async function respondToViewing(
+  db: Db,
+  b: { requestId: string; action: 'approve' | 'alternative'; slot?: string }
+) {
+  const s = await qOne<{ id: string; order_id: string }>(db,
+    'SELECT id, order_id FROM schedules WHERE id=?', b.requestId);
+  if (!s) throw Object.assign(new Error('Permintaan lihat mobil tidak ditemukan'), { code: 'NOT_FOUND' });
+  const slot = b.slot ?? (b.action === 'alternative' ? 'usulan waktu lain' : 'menunggu konfirmasi');
+  const status = b.action === 'approve' ? 'approved' : 'proposed';
+  await exec(db, 'UPDATE schedules SET datetime=?, status=? WHERE id=?', slot, status, b.requestId);
+  return { requestId: b.requestId, status, slot };
+}
+
+/** Tandai mobil terjual. Setelah ini badge hasil inspeksi baru boleh tampil untuk seller. */
+export async function markVehicleSold(db: Db, vehicleId: string) {
+  await exec(db, "UPDATE vehicles SET status='sold' WHERE id=?", vehicleId);
+  return { vehicleId, status: 'sold' };
 }
 
 export function listConversations(db: Db, userId: string) {

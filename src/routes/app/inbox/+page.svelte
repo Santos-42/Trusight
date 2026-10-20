@@ -17,16 +17,23 @@
     const uid = getSession()?.id;
     if (!uid) return;
     const r = await api.get<{
-      id: string; order_id: string; last_msg?: string;
+      id: string; order_id: string; last_msg?: string; kind?: string;
       seller_name?: string | null; inspector_name?: string | null;
     }[]>(`/conversations?userId=${encodeURIComponent(uid)}`);
     if (r.ok && r.data.length) {
       const mapped: Thread[] = r.data.map((c) => {
-        const with_ = ([] as ('a' | 'b')[]).concat(c.seller_name ? ['a'] : [], c.inspector_name ? ['b'] : []);
+        // kind 'inspection' = pembeli <-> inspektor (tab B)
+        // kind 'sale'       = pembeli <-> penjual  (tab A)
+        // Dua thread ini sengaja terpisah supaya obrolan inspeksi tidak bocor ke penjual.
+        const inspection = c.kind === 'inspection';
+        const peer = inspection ? c.inspector_name : c.seller_name;
         return {
-          id: c.id, name: c.seller_name ?? c.inspector_name ?? `Order ${c.order_id}`,
-          snippet: c.last_msg ?? 'Belum ada pesan', with: with_.length ? with_ : ['a'],
-          nameA: c.seller_name ?? `Order ${c.order_id}`, nameB: c.inspector_name ?? 'Belum ada inspektor'
+          id: c.id,
+          name: peer ?? `Order ${c.order_id}`,
+          snippet: c.last_msg ?? 'Belum ada pesan',
+          with: (inspection ? ['b'] : ['a']) as ('a' | 'b')[],
+          nameA: c.seller_name ?? 'Belum ada penjual',
+          nameB: c.inspector_name ?? 'Belum ada inspektor'
         };
       });
       threads = sortThreads(mapped);

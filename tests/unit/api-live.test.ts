@@ -30,10 +30,11 @@ function ctx(path: string, method: string, body: unknown, db: ReturnType<typeof 
 }
 
 describe('endpoint live D1', () => {
-  it('POST orders → GET mine/incoming/assigned', async () => {
+  it('POST orders (purna-beli) → GET mine/incoming/assigned', async () => {
     const db = memDb(SEED);
-    const created = await (await POST(ctx('orders', 'POST', { vehicleId: 'civic-2021', type: 'fast-track', buyerId: 'u-budi' }, db))).json();
+    const created = await (await POST(ctx('orders', 'POST', { vehicleId: 'civic-2021', type: 'fast-track', buyerId: 'u-budi', mode: 'post-purchase' }, db))).json();
     expect(created.ok).toBe(true);
+    expect(created.data.mode).toBe('post-purchase');
     const id: string = created.data.orderId;
 
     const mine = await (await GET(ctx('orders/mine?buyerId=u-budi', 'GET', null, db))).json();
@@ -120,6 +121,52 @@ describe('endpoint live D1', () => {
     expect(seller.data.location_detail).toBeNull();
     expect(seller.data.location_revealed).toBe(false);
     expect(JSON.stringify(seller)).not.toContain('Kalibata');
+  });
+
+  it('order covert disembunyikan dari seller; inspektor ajukan lihat mobil', async () => {
+    const db = memDb(SEED);
+    const created = await (await POST(ctx('orders', 'POST', { vehicleId: 'civic-2021', type: 'standard', buyerId: 'u-budi' }, db))).json();
+    expect(created.data.mode).toBe('covert');
+    const id: string = created.data.orderId;
+
+    // Seller tidak melihat order-nya, hanya "permintaan lihat mobil" tanpa konteks inspeksi
+    const incoming = await (await GET(ctx('orders/incoming?sellerId=u-hendra', 'GET', null, db))).json();
+    expect(incoming.data).toHaveLength(0);
+
+    const viewing = await (await POST(ctx(`orders/${id}/viewing`, 'POST', { inspectorId: 'u-bsantoso', slot: 'Sabtu 10:00' }, db))).json();
+    expect(viewing.data).toMatchObject({ status: 'proposed', slot: 'Sabtu 10:00' });
+
+    const reqs = await (await GET(ctx('viewings/incoming?sellerId=u-hendra', 'GET', null, db))).json();
+    expect(reqs.data).toHaveLength(1);
+    expect(reqs.data[0]).toMatchObject({ vehicle: 'Honda Civic Turbo 2021', requester: 'Budi Santoso' });
+    // Tidak ada satu pun field yang membocorkan konteks inspeksi
+    expect(JSON.stringify(reqs.data)).not.toMatch(/inspeksi|inspection|order_id|mode/i);
+
+    // approveOrder tetap ditolak untuk order covert
+    const ap = await (await POST(ctx(`orders/${id}/approve`, 'POST', { inspectorId: 'u-bsantoso', action: 'approve' }, db))).json();
+    expect(ap.ok).toBe(false);
+  });
+
+  it('thread inspeksi tidak melibatkan seller; thread jual-beli terpisah', async () => {
+    const db = memDb(SEED);
+    const created = await (await POST(ctx('orders', 'POST', { vehicleId: 'civic-2021', type: 'standard', buyerId: 'u-budi' }, db))).json();
+    const id: string = created.data.orderId;
+
+    // Client yang nekat mengirim sellerId ke thread inspeksi tetap dibuang server
+    const insp = await (await POST(ctx('conversations', 'POST', { orderId: id, buyerId: 'u-budi', sellerId: 'u-hendra', inspectorId: 'u-bsantoso', kind: 'inspection' }, db))).json();
+    expect(insp.ok).toBe(true);
+    const sale = await (await POST(ctx('conversations', 'POST', { orderId: id, buyerId: 'u-budi', sellerId: 'u-hendra', kind: 'sale' }, db))).json();
+    expect(sale.ok).toBe(true);
+    expect(sale.data.conversationId).not.toBe(insp.data.conversationId);
+
+    const sellerConvs = await (await GET(ctx('conversations?userId=u-hendra', 'GET', null, db))).json();
+    expect(sellerConvs.data).toHaveLength(1);
+    expect(sellerConvs.data[0].kind).toBe('sale');
+
+    const inspConvs = await (await GET(ctx('conversations?userId=u-bsantoso', 'GET', null, db))).json();
+    expect(inspConvs.data).toHaveLength(1);
+    expect(inspConvs.data[0].kind).toBe('inspection');
+    expect(inspConvs.data[0].seller_name).toBeFalsy();
   });
 
   it('reset full tanpa key env → 404; dengan key → ok, users tetap', async () => {

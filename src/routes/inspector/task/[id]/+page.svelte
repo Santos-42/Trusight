@@ -26,6 +26,22 @@
   let msg = 'Tombol check-in aktif hanya dalam radius 50 m dari mobil.';
   let addr = '';
   let canOpen = false;
+  let viewMsg = '';
+  /**
+   * Ajukan "mau lihat mobil" ke penjual — TANPA identitas TruSight.
+   * Di mata penjual ini calon pembeli biasa, jadi tidak ada yang perlu dirahasiakan
+   * dari permintaannya.
+   */
+  async function requestViewing() {
+    viewMsg = 'Mengirim permintaan...';
+    const r = await api.post<{ slot: string }>(`/orders/${id}/viewing`, {
+      inspectorId: getSession()?.id ?? 'u-bsantoso',
+      slot: 'usulan waktu lihat'
+    });
+    viewMsg = r.ok
+      ? 'Permintaan lihat mobil terkirim ke penjual. Menunggu konfirmasi waktu.'
+      : r.error.message;
+  }
   async function locate() {
     addr = 'Mencari alamat (OSM)...';
     if (!('geolocation' in navigator)) {
@@ -74,7 +90,9 @@
       </p>
       {#if addr}<p class="text-[0.6875rem] text-slate-400">Verifikasi GPS: {addr}</p>{/if}
       <p class="text-[0.8125rem]">{msg}</p>
+      {#if viewMsg}<p class="text-[0.8125rem] text-brand-700">{viewMsg}</p>{/if}
       <div class="flex flex-col gap-2 sm:flex-row">
+        <button class="btn-outline flex-1" on:click={requestViewing}>Ajukan Waktu Lihat</button>
         <button class="btn-blue flex-1" on:click={locate}>Tiba & Verifikasi GPS</button>
         {#if canOpen}<a href={`/inspector/form/${id}`} class="btn-navy flex-1">Buka Formulir</a>{/if}
       </div>

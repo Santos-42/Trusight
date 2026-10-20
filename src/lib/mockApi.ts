@@ -68,7 +68,9 @@ export function mockHandle(path: string, method: string, body: Body): ApiRes<unk
     const type = body.type === 'fast-track' ? 'fast-track' : 'standard';
     const orderId = `TS-${Math.floor(10000 + Math.random() * 89999)}`;
     if (body.buyerId) activeOrders.set(key, orderId);
-    return ok({ orderId, total: PRICING[type], status: 'pending' });
+    // Mode otomatis dari jalur order — senada dengan createOrder di d1.ts.
+    const mode = body.mode === 'post-purchase' ? 'post-purchase' : 'covert';
+    return ok({ orderId, total: PRICING[type], status: 'pending', mode });
   }
   if (seg[0] === 'orders' && seg[2] === 'pay') {
     for (const [k, id] of activeOrders) if (id === seg[1]) activeOrders.delete(k);

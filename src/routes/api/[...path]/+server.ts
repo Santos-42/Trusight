@@ -2,7 +2,8 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { mockHandle } from '$lib/mockApi';
 import {
-  approveOrder, canRevealLocation, checkin, claimVoucher, createOrder, ensureConversation, getMe, getOrder, getReportDetail,
+  approveOrder, canRevealLocation, checkin, claimVoucher, createOrder, ensureConversation,
+  getMe, getOrder, getReportDetail, listViewingRequests, markVehicleSold, requestViewing, respondToViewing,
   listConversations, listMessages, listOrders, listReports, listVouchers, postMessage, publishReport,
   quoteVoucher, resetDemo, submitInspection, uid, type Db
 } from '$lib/server/d1';
@@ -129,9 +130,14 @@ async function handleLive(path: string, method: string, body: Record<string, unk
   try {
     // --- orders ---
     if (seg[0] === 'orders' && seg.length === 1 && method === 'POST') {
-      const { vehicleId, type, buyerId } = body as Record<string, string>;
+      const { vehicleId, type, buyerId, mode } = body as Record<string, string>;
       if (!vehicleId || !buyerId) return err('VALIDATION_ERROR', 'vehicleId dan buyerId wajib diisi');
-      return ok(await createOrder(DB, { vehicleId, type: type ?? 'standard', buyerId }));
+      return ok(await createOrder(DB, {
+        vehicleId,
+        type: type ?? 'standard',
+        buyerId,
+        mode: mode === 'post-purchase' ? 'post-purchase' : 'covert'
+      }));
     }
     if (seg[0] === 'orders' && seg[1] === 'mine' && method === 'GET') {
       const buyerId = query.get('buyerId') ?? '';
@@ -155,6 +161,12 @@ async function handleLive(path: string, method: string, body: Record<string, unk
       const { inspectorId, action, slot } = body as Record<string, string>;
       if (!inspectorId) return err('VALIDATION_ERROR', 'inspectorId wajib diisi');
       return ok(await approveOrder(DB, { orderId: seg[1], inspectorId, action: action === 'alternative' ? 'alternative' : 'approve', slot }));
+    }
+    // Permintaan "mau lihat mobil" — dipakai untuk order COVERT. Di mata seller ini
+    // calon pembeli biasa, bukan permintaan inspeksi.
+    if (seg[0] === 'orders' && seg[1] && seg[2] === 'viewing' && method === 'POST') {
+      const { inspectorId, slot } = body as Record<string, string>;
+      return ok(await requestViewing(DB, { orderId: seg[1], inspectorId: inspectorId ?? '', slot }));
     }
     if (seg[0] === 'orders' && seg[1] && seg[2] === 'pay' && method === 'POST') {
       const o = await getOrder(DB, seg[1]);
@@ -233,11 +245,34 @@ async function handleLive(path: string, method: string, body: Record<string, unk
       return ok(r);
     }
 
+    if (seg[0] === 'viewings' && seg[1] === 'incoming' && method === 'GET') {
+      const sellerId = query.get('sellerId') ?? '';
+      if (!sellerId) return err('VALIDATION_ERROR', 'sellerId wajib diisi');
+      return ok(await listViewingRequests(DB, sellerId));
+    }
+    // Balasan seller atas permintaan "lihat mobil": setujui slot / usul waktu lain.
+    if (seg[0] === 'viewings' && seg[1] && seg[2] === 'respond' && method === 'POST') {
+      const { action, slot } = body as Record<string, string>;
+      return ok(await respondToViewing(DB, {
+        requestId: seg[1],
+        action: action === 'alternative' ? 'alternative' : 'approve',
+        slot
+      }));
+    }
+    if (seg[0] === 'vehicles' && seg[1] && seg[2] === 'sold' && method === 'POST') {
+      return ok(await markVehicleSold(DB, seg[1]));
+    }
+
     // --- chat ---
     if (seg[0] === 'conversations' && method === 'POST') {
-      const { orderId, buyerId, sellerId, inspectorId } = body as Record<string, string>;
-      if (!orderId || !buyerId || !sellerId) return err('VALIDATION_ERROR', 'orderId, buyerId, sellerId wajib diisi');
-      return ok(await ensureConversation(DB, { orderId, buyerId, sellerId, inspectorId }));
+      const { orderId, buyerId, sellerId, inspectorId, kind } = body as Record<string, string>;
+      if (!orderId || !buyerId) return err('VALIDATION_ERROR', 'orderId dan buyerId wajib diisi');
+      const k = kind === 'inspection' ? 'inspection' : 'sale';
+      // Thread 'inspection' sengaja tanpa sellerId — kalau tetap dikirim dari client,
+      // kita buang supaya seller tidak bisa menyusup ke obrolan inspeksi.
+      const safeSeller = k === 'inspection' ? '' : sellerId;
+      if (k === 'sale' && !safeSeller) return err('VALIDATION_ERROR', 'sellerId wajib untuk thread jual-beli');
+      return ok(await ensureConversation(DB, { orderId, buyerId, sellerId: safeSeller, inspectorId, kind: k }));
     }
     if (seg[0] === 'conversations' && method === 'GET') {
       const userId = query.get('userId') ?? '';

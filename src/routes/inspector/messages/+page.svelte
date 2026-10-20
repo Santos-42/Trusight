@@ -16,12 +16,16 @@
     const uid = getSession()?.id;
     if (!uid) return;
     const r = await api.get<{
-      id: string; order_id: string; last_msg?: string;
+      id: string; order_id: string; last_msg?: string; kind?: string;
       buyer_name?: string | null; seller_name?: string | null;
     }[]>(`/conversations?userId=${encodeURIComponent(uid)}`);
     if (r.ok && r.data.length) {
       const mapped: Thread[] = r.data.map((c) => {
-        const with_ = ([] as ('a' | 'b')[]).concat(c.buyer_name ? ['a'] : [], c.seller_name ? ['b'] : []);
+        // Thread 'inspection' tidak melibatkan penjual — jangan tampilkan di tab Penjual.
+        const with_ = ([] as ('a' | 'b')[]).concat(
+          c.buyer_name ? ['a'] : [],
+          c.kind !== 'inspection' && c.seller_name ? ['b'] : []
+        );
         return {
           id: c.id, name: c.buyer_name ?? c.seller_name ?? `Order ${c.order_id}`,
           snippet: c.last_msg ?? 'Belum ada pesan', with: with_.length ? with_ : ['a'],

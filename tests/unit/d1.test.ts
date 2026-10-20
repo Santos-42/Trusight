@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { memDb } from '../stub/d1-mem';
 import {
-  approveOrder, canRevealLocation, checkin, claimVoucher, createOrder, ensureConversation, getOrder, getReport,
-  getReportDetail, isOrderPaid,
+  approveOrder, canRevealLocation, checkin, claimVoucher, createInspectionThread, createOrder, ensureConversation, getOrder, getReport,
+  getReportDetail, isOrderPaid, listViewingRequests, markVehicleSold, requestViewing, respondToViewing,
   listConversations, listInspectionItems, listMessages, listOrders, listVouchers, postMessage, publishReport, quoteVoucher,
   resetDemo, submitInspection
 } from '$lib/server/d1';
+import { certificationBadge, type MockVehicle } from '$lib/mocks';
 
 const SEED = {
   users: [
@@ -26,10 +27,11 @@ const SEED = {
 };
 
 describe('alur order lintas role', () => {
-  it('buyer buat → seller lihat incoming → inspector lihat assigned → approve', async () => {
+  it('buyer buat (purna-beli) → seller lihat incoming → inspector lihat assigned → approve', async () => {
     const db = memDb(SEED);
-    const o = await createOrder(db, { vehicleId: 'civic-2021', type: 'fast-track', buyerId: 'u-budi' });
+    const o = await createOrder(db, { vehicleId: 'civic-2021', type: 'fast-track', buyerId: 'u-budi', mode: 'post-purchase' });
     expect(o.total).toBe(499000);
+    expect(o.mode).toBe('post-purchase');
 
     const mine = await listOrders(db, { buyerId: 'u-budi' });
     expect(mine).toHaveLength(1);
@@ -115,7 +117,7 @@ describe('voucher DB', () => {
 
   it('approve memasukkan inspector ke conversation; post yatim 404', async () => {
     const db = memDb(SEED);
-    const o = await createOrder(db, { vehicleId: 'civic-2021', type: 'standard', buyerId: 'u-budi' });
+    const o = await createOrder(db, { vehicleId: 'civic-2021', type: 'standard', buyerId: 'u-budi', mode: 'post-purchase' });
     await approveOrder(db, { orderId: o.orderId, inspectorId: 'u-bsantoso', action: 'approve', slot: 'Kamis' });
     const convs = await listConversations(db, 'u-bsantoso');
     expect(convs).toHaveLength(1);
@@ -188,6 +190,95 @@ describe('laporan tampil di layar', () => {
   });
 });
 
+describe('inspeksi rahasia (mode covert)', () => {
+  it('order covert tidak pernah terlihat seller; approveOrder ditolak', async () => {
+    const db = memDb(SEED);
+    const o = await createOrder(db, { vehicleId: 'civic-2021', type: 'standard', buyerId: 'u-budi' });
+    expect(o.mode).toBe('covert');
+
+    expect(await listOrders(db, { sellerId: 'u-hendra' })).toHaveLength(0);
+    expect(await listOrders(db, { buyerId: 'u-budi' })).toHaveLength(1);
+
+    await expect(approveOrder(db, { orderId: o.orderId, inspectorId: 'u-bsantoso', action: 'approve' }))
+      .rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
+  it('thread inspeksi tanpa seller; thread jual-beli tetap ada dan terpisah', async () => {
+    const db = memDb(SEED);
+    const o = await createOrder(db, { vehicleId: 'civic-2021', type: 'standard', buyerId: 'u-budi' });
+
+    const insp = await createInspectionThread(db, { orderId: o.orderId, buyerId: 'u-budi', inspectorId: 'u-bsantoso' });
+    // Client yang nekat menyertakan sellerId pun dibuang
+    const insp2 = await ensureConversation(db, { orderId: o.orderId, buyerId: 'u-budi', sellerId: 'u-hendra', inspectorId: 'u-bsantoso', kind: 'inspection' });
+    expect(insp2.conversationId).toBe(insp.conversationId);
+
+    const sale = await ensureConversation(db, { orderId: o.orderId, buyerId: 'u-budi', sellerId: 'u-hendra', kind: 'sale' });
+    expect(sale.conversationId).not.toBe(insp.conversationId);
+
+    const sellerConvs = await listConversations(db, 'u-hendra');
+    expect(sellerConvs).toHaveLength(1);
+    expect((sellerConvs[0] as { kind: string }).kind).toBe('sale');
+
+    const inspConvs = await listConversations(db, 'u-bsantoso');
+    expect(inspConvs).toHaveLength(1);
+    expect((inspConvs[0] as { kind: string }).kind).toBe('inspection');
+    expect(inspConvs[0].seller_name).toBeFalsy();
+  });
+
+  it('inspektor ajukan "lihat mobil" — seller lihat calon pembeli, bukan inspeksi', async () => {
+    const db = memDb(SEED);
+    const o = await createOrder(db, { vehicleId: 'civic-2021', type: 'standard', buyerId: 'u-budi' });
+    await requestViewing(db, { orderId: o.orderId, inspectorId: 'u-bsantoso', slot: 'Sabtu 10:00' });
+
+    const reqs = await listViewingRequests(db, 'u-hendra');
+    expect(reqs).toHaveLength(1);
+    expect(reqs[0]).toMatchObject({ vehicle: 'Honda Civic Turbo 2021', requester: 'Budi Santoso', slot: 'Sabtu 10:00' });
+    // Payload ke seller bebas konteks inspeksi
+    expect(JSON.stringify(reqs[0])).not.toMatch(/inspeksi|inspection|order_id|mode/i);
+  });
+
+  it('seller membalas permintaan lihat mobil: setujui atau usul waktu lain', async () => {
+    const db = memDb(SEED);
+    const o = await createOrder(db, { vehicleId: 'civic-2021', type: 'standard', buyerId: 'u-budi' });
+    await requestViewing(db, { orderId: o.orderId, inspectorId: 'u-bsantoso', slot: 'Sabtu 10:00' });
+
+    const [req] = await listViewingRequests(db, 'u-hendra');
+    const requestId = (req as { request_id: string }).request_id;
+
+    // Usul waktu lain dulu
+    const alt = await respondToViewing(db, { requestId, action: 'alternative', slot: 'Minggu 09:00' });
+    expect(alt).toMatchObject({ status: 'proposed', slot: 'Minggu 09:00' });
+    expect((await listViewingRequests(db, 'u-hendra'))[0]).toMatchObject({ status: 'proposed', slot: 'Minggu 09:00' });
+
+    // Lalu setujui
+    const ok = await respondToViewing(db, { requestId, action: 'approve', slot: 'Minggu 09:00' });
+    expect(ok.status).toBe('approved');
+    expect((await listViewingRequests(db, 'u-hendra'))[0].status).toBe('approved');
+
+    await expect(respondToViewing(db, { requestId: 'sch-tak-ada', action: 'approve' }))
+      .rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+
+  it('badge hasil baru terlihat seller setelah mobil terjual', async () => {
+    const base: MockVehicle = {
+      id: 'civic-2021', title: 'Honda Civic Turbo 2021', year: 2021, mileage: 45000, price: 385000000,
+      location: 'Kalibata, Jakarta Selatan', locationArea: 'Jakarta Selatan',
+      status: 'listed', score: 92, grade: 'A', recommendation: 'beli',
+      cover: '/vehicles/civic-2021/hero.jpg', coverR2: null
+    };
+    // Masih dijual: seller tidak boleh tahu hasil inspeksi
+    expect(certificationBadge(base)).toEqual({ revealed: false, score: null, grade: null, recommendation: null });
+    // Setelah terjual: badge muncul
+    expect(certificationBadge({ ...base, status: 'sold' })).toEqual({ revealed: true, score: 92, grade: 'A', recommendation: 'beli' });
+
+    const db = memDb(SEED);
+    const sold = await markVehicleSold(db, 'civic-2021');
+    expect(sold.status).toBe('sold');
+    const row = await db.prepare('SELECT status FROM vehicles WHERE id=?').bind('civic-2021').first<{ status: string }>();
+    expect(row?.status).toBe('sold');
+  });
+});
+
 describe('privasi lokasi: detail hanya untuk pembeli/inspektor setelah bayar', () => {
   const paid = async (db: ReturnType<typeof memDb>, orderId: string) => {
     await db.prepare("INSERT INTO payments (id, order_id, provider, amount, method, status) VALUES (?,?,?,?,?,?)")
@@ -196,7 +287,7 @@ describe('privasi lokasi: detail hanya untuk pembeli/inspektor setelah bayar', (
 
   it('listOrders tidak pernah mengirim lokasi detail — termasuk ke seller', async () => {
     const db = memDb(SEED);
-    await createOrder(db, { vehicleId: 'civic-2021', type: 'standard', buyerId: 'u-budi' });
+    await createOrder(db, { vehicleId: 'civic-2021', type: 'standard', buyerId: 'u-budi', mode: 'post-purchase' });
     const incoming = await listOrders(db, { sellerId: 'u-hendra' });
     expect(incoming).toHaveLength(1);
     expect(incoming[0].location).toBe('Jakarta Selatan');
@@ -216,7 +307,7 @@ describe('privasi lokasi: detail hanya untuk pembeli/inspektor setelah bayar', (
 
   it('canRevealLocation: seller tidak pernah, pembeli/inspektor hanya setelah bayar', async () => {
     const db = memDb(SEED);
-    const o = await createOrder(db, { vehicleId: 'civic-2021', type: 'standard', buyerId: 'u-budi' });
+    const o = await createOrder(db, { vehicleId: 'civic-2021', type: 'standard', buyerId: 'u-budi', mode: 'post-purchase' });
     await approveOrder(db, { orderId: o.orderId, inspectorId: 'u-bsantoso', action: 'approve', slot: 'Kamis' });
 
     // sebelum bayar: tidak ada yang boleh

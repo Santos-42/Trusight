@@ -12,18 +12,22 @@
     const uid = getSession()?.id;
     if (!uid) return;
     const r = await api.get<{
-      id: string; order_id: string; last_msg?: string;
+      id: string; order_id: string; last_msg?: string; kind?: string;
       buyer_name?: string | null; inspector_name?: string | null;
     }[]>(`/conversations?userId=${encodeURIComponent(uid)}`);
     if (r.ok) {
-      const mapped: Thread[] = r.data.map((c) => {
-        const with_ = ([] as ('a' | 'b')[]).concat(c.buyer_name ? ['a'] : [], c.inspector_name ? ['b'] : []);
-        return {
-          id: c.id, name: c.buyer_name ?? c.inspector_name ?? `Order ${c.order_id}`,
-          snippet: c.last_msg ?? 'Belum ada pesan', with: with_.length ? with_ : ['a'],
-          nameA: c.buyer_name ?? 'Pembeli', nameB: c.inspector_name ?? 'Belum ada inspektor'
-        };
-      });
+      // Seller hanya berhak atas thread jual-beli. Thread 'inspection'
+      // (pembeli <-> inspektor) sengaja tidak pernah diikutsertakan.
+      const mapped: Thread[] = r.data
+        .filter((c) => c.kind !== 'inspection')
+        .map((c) => ({
+          id: c.id,
+          name: c.buyer_name ?? `Order ${c.order_id}`,
+          snippet: c.last_msg ?? 'Belum ada pesan',
+          with: (c.inspector_name ? ['a', 'b'] : ['a']) as ('a' | 'b')[],
+          nameA: c.buyer_name ?? 'Pembeli',
+          nameB: c.inspector_name ?? 'Belum ada inspektor'
+        }));
       threads = sortThreads(mapped);
     }
   });
