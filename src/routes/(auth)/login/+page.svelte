@@ -31,7 +31,7 @@
     <div class="text-right text-[0.8125rem]"><a href="/forgot" class="text-slate-500">Forgot Password?</a></div>
     <div class="flex flex-wrap items-center gap-2">
       <span class="text-[0.6875rem] text-slate-400">Demo:</span>
-      {#each [{ r: 'Buyer', e: 'budi@mail.com' }, { r: 'Seller', e: 'hendra@showroom.id' }, { r: 'Inspector', e: 'firman@trusight.id' }, { r: 'Inspector (Budi)', e: 'budi.s@trusight.id' }, { r: 'Admin', e: 'admin@trusight.id' }] as d}
+      {#each [{ r: 'Buyer', e: 'budi@mail.com' }, { r: 'Seller', e: 'hendra@showroom.id' }, { r: 'Inspector', e: 'firman@trusight.id' }, { r: 'Admin', e: 'admin@trusight.id' }] as d}
         <button type="button" class="rounded-full border border-slate-200 px-3 py-1 text-[0.6875rem] font-bold text-slate-500" on:click={() => { email = d.e; password = 'demo1234'; }}>{d.r}</button>
       {/each}
     </div>

@@ -1,7 +1,16 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { Bell, SlidersHorizontal, Car } from '@lucide/svelte';
   import VehicleCard from '$lib/components/vehicle/VehicleCard.svelte';
+  import { loadCatalog, type CatalogVehicle } from '$lib/catalog';
   import { mockVehicles } from '$lib/mocks';
+
+  // Mulai dari katalog statis supaya tidak ada layar kosong, lalu digabung dengan
+  // iklan yang dibuat seller di database.
+  let catalog: CatalogVehicle[] = mockVehicles;
+  onMount(async () => {
+    catalog = await loadCatalog();
+  });
 </script>
 <svelte:head><title>Home — TruSight</title></svelte:head>
 <div class="grid gap-5">
@@ -37,7 +46,7 @@
     <a href="/app/search" class="ts-back" aria-label="Filter"><SlidersHorizontal class="size-5" /></a>
   </div>
   <div class="grid grid gap-4 sm:grid-cols-[repeat(auto-fill,minmax(250px,1fr))]">
-    {#each mockVehicles as v}<VehicleCard {v} />{/each}
+    {#each catalog as v}<VehicleCard {v} />{/each}
   </div>
   <a href="/app/search" class="btn-outline w-full gap-2"><Car class="size-5" /> Lihat Semua Mobil</a>
 </div>

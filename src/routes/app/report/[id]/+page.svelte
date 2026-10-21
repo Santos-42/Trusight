@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
-  import { ChevronLeft, Share2, CalendarDays, User, ShieldCheck, CheckCircle2, AlertTriangle, Car, Wrench } from '@lucide/svelte';
+  import { ChevronLeft, Share2, CalendarDays, User, ShieldCheck, CheckCircle2, AlertTriangle, Car, Wrench, FileText } from '@lucide/svelte';
   import ScoreRing from '$lib/components/vehicle/ScoreRing.svelte';
   import ScoreBadge from '$lib/components/vehicle/ScoreBadge.svelte';
   import { buildReportPdf } from '$lib/reportPdf';
@@ -29,10 +29,13 @@
 
   $: id = $page.params.id ?? 'REP-3401';
   let live: ReportDetail | null = null;
+  /** true kalau laporan tidak ada di database — halaman harus bilang, bukan loading selamanya. */
+  let notFound = false;
 
   onMount(async () => {
     const r = await api.get<ReportDetail>(`/reports/${encodeURIComponent(id)}`);
     if (r.ok) live = r.data;
+    else notFound = true;
   });
 
   $: vehicle = live?.vehicle ?? 'Memuat kendaraan…';
@@ -97,6 +100,16 @@
     <button class="ts-back" on:click={share} aria-label="Bagikan"><Share2 class="size-5" /></button>
   </div>
 
+  {#if notFound}
+    <div class="ts-card grid justify-items-center gap-2 p-10 text-center">
+      <FileText class="size-10 text-slate-300" />
+      <p class="font-bold">Laporan tidak ditemukan</p>
+      <p class="max-w-xs text-[0.8125rem] text-slate-500">
+        Laporan <b>{id}</b> belum ada. Laporan terbit setelah inspeksi selesai dan admin menerbitkannya.
+      </p>
+      <a href="/app/history" class="btn-navy mt-1">Kembali ke Riwayat</a>
+    </div>
+  {:else}
   <div class="grid items-start gap-5 lg:grid-cols-[1fr_320px]">
     <div class="grid gap-5">
       <div><span class="pill-doc">OFFICIAL DOCUMENT</span></div>
@@ -203,4 +216,5 @@
       <a href={`/app/warranty/${id}`} class="btn-outline w-full">Garansi & Komplain</a>
     </aside>
   </div>
+  {/if}
 </div>

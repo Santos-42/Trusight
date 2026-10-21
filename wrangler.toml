@@ -11,3 +11,6 @@ pages_build_output_dir = ".svelte-kit/cloudflare"
 binding = "DB"
 database_name = "trusight"
 database_id = "b59fa32c-92b7-42b4-b16e-19172e82103c"
+
+# Foto listing & lisensi disimpan sebagai file statis di static/vehicles/<nama-mobil>/
+# dan static/licenses/<kode>/ — jadi ikut ter-deploy bersama aplikasinya.

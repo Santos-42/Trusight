@@ -18,11 +18,11 @@
   }
 </script>
 <div class="rounded-2xl border bg-white p-4">
-  <p class="text-sm font-bold">Tanda Tangan Digital <span class="font-normal text-slate-500">(OSS: signature_pad, MIT)</span></p>
+  <p class="text-sm font-bold">Tanda Tangan Digital</p>
   <canvas bind:this={canvas} class="mt-2 h-40 w-full rounded-xl border bg-slate-50 touch-none"></canvas>
   <div class="mt-2 flex gap-2">
     <button class="min-h-11 flex-1 rounded-xl border text-sm font-bold" on:click={() => { pad?.clear(); empty = true; }}>Hapus</button>
     <button class="min-h-11 flex-1 rounded-xl bg-slate-900 text-sm font-bold text-white" on:click={save}>Simpan TTD</button>
   </div>
-  {#if empty}<p class="mt-1 text-xs text-slate-400">Tulis di atas kanvas — mockup tersimpan lokal, belum di-notarisasi.</p>{/if}
+  {#if empty}<p class="mt-1 text-xs text-slate-400">Tulis di atas kanvas.</p>{/if}
 </div>

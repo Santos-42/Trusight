@@ -1,9 +1,11 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { mockHandle } from '$lib/mockApi';
+import { storeMedia, type MediaPurpose } from '$lib/server/uploads';
 import {
-  approveOrder, canRevealLocation, checkin, claimVoucher, createOrder, ensureConversation,
-  getMe, getOrder, getReportDetail, listViewingRequests, markVehicleSold, requestViewing, respondToViewing,
+  approveOrder, canRevealLocation, checkin, claimVoucher, createOrder, createVehicle, ensureConversation,
+  getMe, getOrder, getReportDetail, getInspectorProfile, listVehicles, listViewingRequests, markVehicleSold, requestViewing, respondToViewing,
+  setVehicleCover,
   listConversations, listMessages, listOrders, listReports, listVouchers, postMessage, publishReport,
   quoteVoucher, resetDemo, submitInspection, uid, type Db
 } from '$lib/server/d1';
@@ -117,6 +119,7 @@ function dbErr(e: unknown) {
   if (code === 'NOT_FOUND') return err('NOT_FOUND', msg, 404);
   if (code === 'VALIDATION_ERROR') return err('VALIDATION_ERROR', msg);
   if (code === 'CONFLICT') return err('CONFLICT', msg, 409);
+  if (code === 'NOT_CONFIGURED') return err('NOT_CONFIGURED', msg, 501);
   console.error(e);
   return err('UPSTREAM_ERROR', 'Server error', 500);
 }
@@ -303,6 +306,50 @@ async function handleLive(path: string, method: string, body: Record<string, unk
       if (!u) return err('NOT_FOUND', 'User tidak ditemukan', 404);
       return ok(u);
     }
+    // Profil inspektur lengkap (lisensi, rating, region) untuk halaman Profil.
+    if (seg[0] === 'inspectors' && seg[1] === 'me' && method === 'GET') {
+      const userId = query.get('userId') ?? '';
+      if (!userId) return err('VALIDATION_ERROR', 'userId wajib diisi');
+      const p = await getInspectorProfile(DB, userId);
+      if (!p) return err('NOT_FOUND', 'Profil inspektur tidak ditemukan', 404);
+      return ok(p);
+    }
+
+    // --- vehicles (iklan) ---
+    if (seg[0] === 'vehicles' && seg.length === 1 && method === 'GET') {
+      const sellerId = query.get('sellerId') ?? undefined;
+      return ok(await listVehicles(DB, { sellerId }));
+    }
+    if (seg[0] === 'vehicles' && seg.length === 1 && method === 'POST') {
+      const b = body as Record<string, unknown>;
+      const sellerId = String(b.sellerId ?? '');
+      if (!sellerId) return err('VALIDATION_ERROR', 'sellerId wajib diisi');
+      if (!b.title || !b.year || !b.price || !b.locationArea) {
+        return err('VALIDATION_ERROR', 'title, year, price, dan locationArea wajib diisi');
+      }
+      return ok(await createVehicle(DB, {
+        sellerId,
+        title: String(b.title),
+        year: Number(b.year),
+        price: Number(b.price),
+        mileage: b.mileage ? Number(b.mileage) : undefined,
+        locationArea: String(b.locationArea),
+        locationDetail: b.locationDetail ? String(b.locationDetail) : undefined,
+        brand: b.brand ? String(b.brand) : undefined,
+        model: b.model ? String(b.model) : undefined,
+        color: b.color ? String(b.color) : undefined,
+        plateNo: b.plateNo ? String(b.plateNo) : undefined,
+        fuel: b.fuel ? String(b.fuel) : undefined,
+        transmission: b.transmission ? String(b.transmission) : undefined,
+        cover: b.cover ? String(b.cover) : undefined
+      }));
+    }
+
+    if (seg[0] === 'vehicles' && seg[1] && seg[2] === 'cover' && method === 'POST') {
+      const { cover } = body as Record<string, string>;
+      if (!cover) return err('VALIDATION_ERROR', 'cover wajib diisi');
+      return ok(await setVehicleCover(DB, seg[1], cover));
+    }
 
     // --- demo reset (Fase 4): endpoint khusus, key via env. Tanpa RESET_KEY -> mati total. ---
     if (seg[0] === 'demo' && seg[1] === 'reset' && (method === 'POST' || method === 'GET')) {
@@ -332,14 +379,42 @@ async function handleLive(path: string, method: string, body: Record<string, unk
   return json(mockHandle(path, method, body));
 }
 
+/**
+ * POST /api/uploads — simpan file ke folder statis.
+ * Multipart, jadi harus ditangani SEBELUM body di-parse sebagai JSON.
+ */
+async function handleUpload(request: Request) {
+  try {
+    const form = await request.formData();
+    const file = form.get('file');
+    const purposeRaw = String(form.get('purpose') ?? 'vehicle');
+    const purpose = (purposeRaw === 'license' || purposeRaw === 'inspection' ? purposeRaw : 'vehicle') as MediaPurpose;
+    const folder = String(form.get('folder') ?? '');
+    const filename = String(form.get('filename') ?? '');
+    if (!(file instanceof File) || !file.size) return err('VALIDATION_ERROR', 'file wajib diunggah');
+    if (!folder) return err('VALIDATION_ERROR', 'folder wajib diisi');
+    if (file.size > 5 * 1024 * 1024) return err('VALIDATION_ERROR', 'Ukuran file maksimal 5 MB');
+    return ok(await storeMedia({ file, purpose, folder, filename: filename || undefined }));
+  } catch (e) {
+    return dbErr(e);
+  }
+}
+
 const handler: RequestHandler = async ({ request, params, platform, url }) => {
   const path = `/${params.path ?? ''}`;
-  const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
   const seg = path.split('?')[0].split('/').filter(Boolean);
-  if (seg[0] === 'auth' && seg[1]) {
-    return handleAuth(seg[1], body, platform?.env as Penv);
+  const penv = platform?.env as Penv;
+
+  // Multipart harus ditangani sebelum body di-parse sebagai JSON.
+  if (seg[0] === 'uploads' && seg.length === 1 && request.method === 'POST') {
+    return handleUpload(request);
   }
-  return handleLive(path, request.method, body, url.searchParams, platform?.env as Penv);
+
+  const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+  if (seg[0] === 'auth' && seg[1]) {
+    return handleAuth(seg[1], body, penv);
+  }
+  return handleLive(path, request.method, body, url.searchParams, penv);
 };
 
 export const GET = handler;

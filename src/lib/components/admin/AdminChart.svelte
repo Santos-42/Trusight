@@ -14,6 +14,6 @@
   });
 </script>
 <div class="rounded-2xl border bg-white p-4">
-  <p class="text-sm font-bold">Order 7 Hari <span class="font-normal text-slate-500">(OSS: Chart.js, data mockup)</span></p>
+  <p class="text-sm font-bold">Order 7 Hari</p>
   <canvas bind:this={canvas} class="mt-2 max-h-56 w-full"></canvas>
 </div>

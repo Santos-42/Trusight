@@ -12,6 +12,31 @@ export function km(n: number | null | undefined): string {
   return `${new Intl.NumberFormat('id-ID').format(n)} km`;
 }
 
+/**
+ * Grade diturunkan dari score — tidak dipilih manual lagi.
+ * Skala: A+ ≥95 · A ≥90 · A- ≥85 · B+ ≥80 · B ≥75 · B- ≥70 · C+ ≥65 · C ≥60 · D <60
+ */
+export function gradeFromScore(score: number | null | undefined): string {
+  const s = Math.max(0, Math.min(100, Math.round(score ?? 0)));
+  if (s >= 95) return 'A+';
+  if (s >= 90) return 'A';
+  if (s >= 85) return 'A-';
+  if (s >= 80) return 'B+';
+  if (s >= 75) return 'B';
+  if (s >= 70) return 'B-';
+  if (s >= 65) return 'C+';
+  if (s >= 60) return 'C';
+  return 'D';
+}
+
+/** Rekomendasi juga mengikuti score: ≥85 beli, 70-84 nego, <70 hindari. */
+export function recoFromScore(score: number | null | undefined): 'beli' | 'nego' | 'hindari' {
+  const s = Math.max(0, Math.min(100, Math.round(score ?? 0)));
+  if (s >= 85) return 'beli';
+  if (s >= 70) return 'nego';
+  return 'hindari';
+}
+
 export function gradeColor(grade: string | null | undefined): string {
   if (!grade) return 'bg-slate-100 text-slate-700';
   if (grade.startsWith('A')) return 'bg-emerald-100 text-emerald-800';

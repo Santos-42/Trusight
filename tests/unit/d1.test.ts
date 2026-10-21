@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { memDb } from '../stub/d1-mem';
 import {
-  approveOrder, canRevealLocation, checkin, claimVoucher, createInspectionThread, createOrder, ensureConversation, getOrder, getReport,
-  getReportDetail, isOrderPaid, listViewingRequests, markVehicleSold, pickInspector, requestViewing, respondToViewing,
+  approveOrder, canRevealLocation, checkin, claimVoucher, createInspectionThread, createOrder, createVehicle, ensureConversation, getOrder, getReport,
+  getReportDetail, isOrderPaid, listVehicles, listViewingRequests, markVehicleSold, pickInspector, requestViewing, respondToViewing,
   listConversations, listInspectionItems, listMessages, listOrders, listVouchers, postMessage, publishReport, quoteVoucher,
   resetDemo, submitInspection
 } from '$lib/server/d1';
@@ -170,8 +170,23 @@ describe('laporan tampil di layar', () => {
       items: [{ category: 'mesin', key: 'oli', label: 'Oli mesin', condition: 'Normal' }]
     });
     const rep = await getReport(db, s.reportId);
-    expect(rep).toMatchObject({ recommendation: 'nego', repair_estimate: 2000000 });
+    // Grade & rekomendasi dihitung ulang dari score (85 -> A- / beli), bukan dari
+    // nilai yang dikirim client ('B' / 'nego').
+    expect(rep).toMatchObject({ recommendation: 'beli', repair_estimate: 2000000 });
+    expect(s.grade).toBe('A-');
     expect(rep?.guarantee_until).toBeTruthy();
+  });
+
+  it('grade & rekomendasi server mengikuti score, nilai client diabaikan', async () => {
+    const db = memDb(SEED);
+    const o = await createOrder(db, { vehicleId: 'civic-2021', type: 'standard', buyerId: 'u-budi' });
+    const s = await submitInspection(db, {
+      orderId: o.orderId, inspectorId: 'u-bsantoso', score: 72, grade: 'A+',
+      recommendation: 'beli', repairEstimate: 500000
+    });
+    expect(s.grade).toBe('B-');
+    const rep = await getReport(db, s.reportId);
+    expect(rep?.recommendation).toBe('nego');
   });
 
   it('getReportDetail mengembalikan checklist + foto sekali jalan', async () => {
@@ -301,6 +316,51 @@ describe('inspeksi rahasia (mode covert)', () => {
     expect(await pickInspector(db)).toBe('i-ringan');
     // "DKI Jakarta" harus match lokasi "Jakarta Selatan" — cocok per kata
     expect(await pickInspector(db, 'Jakarta Selatan')).toBe('i-berat');
+  });
+
+  it('daftar permintaan seller: SATU baris per mobil walau ada beberapa order', async () => {
+    const db = memDb({
+      ...SEED,
+      users: [...SEED.users, { id: 'u-budi2', role: 'buyer', name: 'Budi Dua', email: 'budi2@mail.com' }]
+    });
+    const a = await createOrder(db, { vehicleId: 'civic-2021', type: 'standard', buyerId: 'u-budi' });
+    const b = await createOrder(db, { vehicleId: 'civic-2021', type: 'standard', buyerId: 'u-budi2' });
+    await requestViewing(db, { orderId: a.orderId, inspectorId: 'u-bsantoso', slot: 'Sabtu 10:00' });
+    await requestViewing(db, { orderId: b.orderId, inspectorId: 'u-bsantoso', slot: 'Minggu 09:00' });
+
+    const reqs = await listViewingRequests(db, 'u-hendra');
+    expect(reqs).toHaveLength(1);
+    expect(reqs[0].vehicle_id).toBe('civic-2021');
+  });
+
+  it('requestViewing memperbarui usulan, bukan menumpuk', async () => {
+    const db = memDb(SEED);
+    const o = await createOrder(db, { vehicleId: 'civic-2021', type: 'standard', buyerId: 'u-budi' });
+    await requestViewing(db, { orderId: o.orderId, inspectorId: 'u-bsantoso', slot: 'Sabtu 10:00' });
+    await requestViewing(db, { orderId: o.orderId, inspectorId: 'u-bsantoso', slot: 'Minggu 09:00' });
+
+    const reqs = await listViewingRequests(db, 'u-hendra');
+    expect(reqs).toHaveLength(1);
+    expect(reqs[0]).toMatchObject({ slot: 'Minggu 09:00', vehicle: 'Honda Civic Turbo 2021' });
+  });
+
+  it('seller bisa membuat iklan sendiri', async () => {
+    const db = memDb(SEED);
+    const v = await createVehicle(db, {
+      sellerId: 'u-hendra',
+      title: 'Honda Brio RS 2021',
+      year: 2021,
+      price: 178000000,
+      mileage: 38000,
+      locationArea: 'Margonda, Kota Depok'
+    });
+    expect(v.id).toBe('honda-brio-rs-2021');
+    expect(v.cover).toBe('/vehicles/honda-brio-rs-2021/hero.jpg');
+
+    const all = await listVehicles(db);
+    expect(all).toHaveLength(2); // 1 seed + 1 baru
+    expect((await listVehicles(db, { sellerId: 'u-hendra' })).length).toBe(2);
+    expect(await listVehicles(db, { sellerId: 'u-tidak-ada' })).toHaveLength(0);
   });
 
   it('badge hasil baru terlihat seller setelah mobil terjual', async () => {

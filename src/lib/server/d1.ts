@@ -1,5 +1,7 @@
 /** Lapisan D1 live TruSight — dipakai endpoint api/[...path]. Tanpa dependensi SvelteKit agar bisa di-unit-test. */
 
+import { gradeFromScore, recoFromScore } from '$lib/format';
+
 export interface Stmt {
   bind(...params: unknown[]): {
     first<T = Record<string, unknown>>(): Promise<(T & Record<string, unknown>) | null>;
@@ -183,7 +185,7 @@ export async function getOrder(db: Db, id: string): Promise<Record<string, unkno
   // `location` = area publik (selalu aman), `location_detail` = alamat lengkap yang
   // baru boleh disurface pemanggil bila `canRevealLocation` lolos.
   const o = await qOne(db, `SELECT o.*, v.title AS vehicle, v.location_area AS location,
-    v.location AS location_detail, v.price, v.year,
+    v.location AS location_detail, v.cover, v.price, v.year,
     ub.name AS buyer, us.name AS seller
     FROM orders o JOIN vehicles v ON v.id=o.vehicle_id
     LEFT JOIN users ub ON ub.id=o.buyer_id LEFT JOIN users us ON us.id=v.seller_id
@@ -192,8 +194,12 @@ export async function getOrder(db: Db, id: string): Promise<Record<string, unkno
   const schedule = await qOne(db, `SELECT s.datetime, s.status, u.name AS inspector
     FROM schedules s LEFT JOIN users u ON u.id=s.inspector_id
     WHERE s.order_id=? ORDER BY s.rowid DESC LIMIT 1`, id);
+  // Permintaan "lihat mobil" (proposed_by='inspector') — dibedakan dari jadwal
+  // auto-assign (proposed_by='trusight') supaya status persetujuannya jelas.
+  const viewing = await qOne(db, `SELECT s.id, s.datetime, s.status FROM schedules s
+    WHERE s.order_id=? AND s.proposed_by='inspector' ORDER BY s.rowid DESC LIMIT 1`, id);
   const paid = await isOrderPaid(db, id);
-  return { ...(o as Record<string, unknown>), schedule: schedule ?? null, paid };
+  return { ...(o as Record<string, unknown>), schedule: schedule ?? null, viewing: viewing ?? null, paid };
 }
 
 export interface ApproveInput { orderId: string; inspectorId: string; action: 'approve' | 'alternative'; slot?: string }
@@ -237,12 +243,17 @@ export interface SubmitInput {
   photoKeys?: string[];
 }
 export async function submitInspection(db: Db, b: SubmitInput) {
+  // Grade & recommendation SELALU dihitung ulang di server dari score — nilai yang
+  // dikirim client tidak dipercaya, supaya grade tidak bisa dimanipulasi.
+  const score = Math.max(0, Math.min(100, Math.round(b.score ?? 0)));
+  const grade = gradeFromScore(score);
+  const recommendation = recoFromScore(score);
   const insp = await qOne<{ id: string }>(db, 'SELECT id FROM inspections WHERE order_id=?', b.orderId);
   const inspId = insp?.id ?? uid('INSP');
   if (!insp) await exec(db, 'INSERT INTO inspections (id, order_id, inspector_id) VALUES (?,?,?)', inspId, b.orderId, b.inspectorId);
   await exec(db, `UPDATE inspections SET score=?, grade=?, recommendation=?, repair_estimate=?,
     guarantee_until=date('now','+30 days') WHERE id=?`,
-    b.score, b.grade, b.recommendation, b.repairEstimate ?? 0, inspId);
+    score, grade, recommendation, b.repairEstimate ?? 0, inspId);
   await exec(db, 'DELETE FROM inspection_items WHERE inspection_id=?', inspId);
   for (const it of b.items ?? []) {
     await exec(db, 'INSERT INTO inspection_items (id, inspection_id, category, item_key, item_label, condition) VALUES (?,?,?,?,?,?)',
@@ -250,6 +261,7 @@ export async function submitInspection(db: Db, b: SubmitInput) {
   }
   await exec(db, 'DELETE FROM inspection_photos WHERE inspection_id=?', inspId);
   for (const k of b.photoKeys ?? []) {
+    // r2_key diisi dengan path publik hasil unggahan (mis. /inspections/TS-123/1-hero.jpg)
     await exec(db, 'INSERT INTO inspection_photos (id, inspection_id, r2_key, taken_at) VALUES (?,?,?,?)',
       uid('PHT'), inspId, k, new Date().toISOString());
   }
@@ -257,10 +269,10 @@ export async function submitInspection(db: Db, b: SubmitInput) {
   await exec(db, `INSERT INTO reports (id, inspection_id, order_id, pdf_r2_key, score_snapshot, grade_snapshot, published)
     VALUES (?,?,?,?,?,?,0)
     ON CONFLICT(inspection_id) DO UPDATE SET score_snapshot=excluded.score_snapshot, grade_snapshot=excluded.grade_snapshot`,
-    repId, inspId, b.orderId, `pending:${repId}`, b.score, b.grade);
+    repId, inspId, b.orderId, `pending:${repId}`, score, grade);
   const rep = await qOne<{ id: string }>(db, 'SELECT id FROM reports WHERE inspection_id=?', inspId);
   await exec(db, "UPDATE orders SET status='verified' WHERE id=?", b.orderId);
-  return { inspectionId: inspId, reportId: rep?.id ?? repId, score: b.score, grade: b.grade };
+  return { inspectionId: inspId, reportId: rep?.id ?? repId, score, grade };
 }
 
 export function getReport(db: Db, id: string) {
@@ -358,8 +370,16 @@ export async function requestViewing(db: Db, b: { orderId: string; inspectorId?:
   const v = await qOne<{ seller_id: string }>(db, 'SELECT seller_id FROM vehicles WHERE id=?', o.vehicle_id);
 
   const slot = b.slot ?? 'usulan waktu lihat';
-  await exec(db, `INSERT INTO schedules (id, order_id, proposed_by, datetime, inspector_id, status)
-    VALUES (?,?,?,?,?,?)`, uid('SCH'), b.orderId, 'inspector', slot, inspectorId, 'proposed');
+  // Satu usulan per order: kalau inspektor sudah pernah mengajukan, usulannya
+  // diperbarui — bukan ditumpuk jadi banyak baris untuk mobil yang sama.
+  const ex = await qOne<{ id: string }>(db,
+    "SELECT id FROM schedules WHERE order_id=? AND proposed_by='inspector' AND status='proposed' LIMIT 1", b.orderId);
+  if (ex) {
+    await exec(db, 'UPDATE schedules SET datetime=?, inspector_id=? WHERE id=?', slot, inspectorId, ex.id);
+  } else {
+    await exec(db, `INSERT INTO schedules (id, order_id, proposed_by, datetime, inspector_id, status)
+      VALUES (?,?,?,?,?,?)`, uid('SCH'), b.orderId, 'inspector', slot, inspectorId, 'proposed');
+  }
 
   // Thread jual-beli: INSPEKTOR <-> PENJUAL. Inspektor menyamar jadi calon pembeli,
   // jadi dari sisi penjual ini percakapan biasa — tanpa konteks inspeksi sama sekali.
@@ -376,17 +396,47 @@ export async function requestViewing(db: Db, b: { orderId: string; inspectorId?:
  * Daftar "permintaan lihat mobil" untuk seller. Sengaja TIDAK membawa identitas order,
  * tipe inspeksi, atau apa pun yang mengarah ke TruSight — seller cukup tahu ada
  * calon pembeli yang mau melihat mobilnya.
+ *
+ * SATU baris per mobil: kalau mobil yang sama punya beberapa usulan, yang terbaru
+ * yang ditampilkan (usulan yang lebih lama sudah usang).
  */
-export function listViewingRequests(db: Db, sellerId: string) {
-  return qAll(db, `SELECT s.id AS request_id, s.datetime AS slot, s.status,
+export async function listViewingRequests(db: Db, sellerId: string) {
+  const rows = await qAll<ViewingRow>(db, `SELECT s.id AS request_id, s.datetime AS slot, s.status,
       v.id AS vehicle_id, v.title AS vehicle, v.location_area AS location, v.price,
-      u.name AS requester
+      u.name AS requester, rep.id AS report_id
     FROM schedules s
     JOIN orders o ON o.id=s.order_id
     JOIN vehicles v ON v.id=o.vehicle_id
     LEFT JOIN users u ON u.id=s.inspector_id
+    LEFT JOIN reports rep ON rep.order_id=o.id
     WHERE v.seller_id=? AND s.proposed_by='inspector' AND o.mode='covert'
     ORDER BY s.rowid DESC`, sellerId);
+  return dedupeByVehicle(rows);
+}
+
+type ViewingRow = {
+  request_id: string;
+  slot: string;
+  status: string;
+  vehicle_id: string;
+  vehicle: string;
+  location: string;
+  price: number;
+  requester: string | null;
+  /** Ada kalau inspeksinya sudah selesai dan laporannya terbit. */
+  report_id: string | null;
+};
+
+/** Satu entri per kendaraan — usulan yang lebih lama disembunyikan. */
+function dedupeByVehicle(rows: ViewingRow[]): ViewingRow[] {
+  const seen = new Set<string>();
+  const out: ViewingRow[] = [];
+  for (const r of rows) {
+    if (seen.has(r.vehicle_id)) continue;
+    seen.add(r.vehicle_id);
+    out.push(r);
+  }
+  return out;
 }
 
 /**
@@ -410,6 +460,65 @@ export async function respondToViewing(
 export async function markVehicleSold(db: Db, vehicleId: string) {
   await exec(db, "UPDATE vehicles SET status='sold' WHERE id=?", vehicleId);
   return { vehicleId, status: 'sold' };
+}
+
+export interface VehicleInput {
+  sellerId: string;
+  title: string;
+  year: number;
+  price: number;
+  mileage?: number;
+  locationArea: string;
+  locationDetail?: string;
+  brand?: string;
+  model?: string;
+  color?: string;
+  plateNo?: string;
+  fuel?: string;
+  transmission?: string;
+  cover?: string;
+}
+
+/** Slug id dari judul + tahun: "Honda Brio RS 2021" -> "honda-brio-rs-2021". */
+function vehicleSlug(title: string, year: number): string {
+  const base = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  // Judul mobil sering sudah memuat tahun — jangan dobelkan.
+  return base.endsWith(String(year)) ? base : `${base}-${year}`;
+}
+
+/** Set cover (key R2 atau path statis) sebuah kendaraan. */
+export async function setVehicleCover(db: Db, vehicleId: string, cover: string) {
+  await exec(db, 'UPDATE vehicles SET cover=? WHERE id=?', cover, vehicleId);
+  return { vehicleId, cover };
+}
+
+/** Daftar kendaraan. Tanpa sellerId = seluruh katalog (untuk feed buyer). */
+export function listVehicles(db: Db, filter: { sellerId?: string } = {}) {
+  let sql = `SELECT id, seller_id, title, brand, model, year, mileage, transmission, fuel, plate_no, color,
+      location, location_area, price, status, cover FROM vehicles`;
+  const p: unknown[] = [];
+  if (filter.sellerId) {
+    sql += ' WHERE seller_id=?';
+    p.push(filter.sellerId);
+  }
+  sql += ' ORDER BY created_at DESC';
+  return qAll(db, sql, ...p);
+}
+
+/** Seller membuat iklannya sendiri. */
+export async function createVehicle(db: Db, b: VehicleInput) {
+  let id = vehicleSlug(b.title, b.year);
+  const ex = await qOne<{ id: string }>(db, 'SELECT id FROM vehicles WHERE id=?', id);
+  if (ex) id = `${id}-${Math.random().toString(36).slice(2, 6)}`;
+  const cover = b.cover?.trim() || `/vehicles/${id}/hero.jpg`;
+  await exec(db, `INSERT INTO vehicles
+      (id, seller_id, title, brand, model, year, mileage, transmission, fuel, plate_no, color,
+       location, location_area, price, status, cover)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    id, b.sellerId, b.title, b.brand ?? null, b.model ?? null, b.year, b.mileage ?? null,
+    b.transmission ?? 'Matic', b.fuel ?? 'Bensin', b.plateNo ?? null, b.color ?? null,
+    b.locationDetail?.trim() || b.locationArea, b.locationArea, b.price, 'listed', cover);
+  return { id, title: b.title, cover, status: 'listed' };
 }
 
 export function listConversations(db: Db, userId: string) {
@@ -438,6 +547,18 @@ export async function postMessage(db: Db, b: { conversationId: string; senderId:
 
 export function getMe(db: Db, userId: string) {
   return qOne(db, 'SELECT id, name, email, role, trust_score, status FROM users WHERE id=?', userId);
+}
+
+/**
+ * Profil lengkap inspektur: data user + profil inspektur (lisensi, rating, region).
+ * Dipakai halaman Profil & Sertifikat supaya isinya mengikuti akun yang sedang login —
+ * sebelumnya nama & lisensinya diketik manual dan selalu menampilkan satu orang saja.
+ */
+export function getInspectorProfile(db: Db, userId: string) {
+  return qOne(db, `SELECT u.id, u.name, u.email, u.trust_score, u.status,
+      p.license_no, p.rating, p.total_inspections, p.region, p.status AS profile_status
+    FROM users u LEFT JOIN inspector_profiles p ON p.user_id=u.id
+    WHERE u.id=? AND u.role='inspector'`, userId);
 }
 
 /** Katalog voucher server-side (satu-satunya sumber kebenaran diskon). */

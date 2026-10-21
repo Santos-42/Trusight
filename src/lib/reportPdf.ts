@@ -21,8 +21,8 @@ export async function buildReportPdf(opts: {
   draw(`Score: ${opts.score} / Grade: ${opts.grade}`, 50, 726);
   draw(`Inspector: ${opts.inspector}`, 50, 708);
   draw(`Date: ${opts.date}`, 50, 690);
-  draw('150-point inspection • Garansi laporan 30 hari (mockup)', 50, 662, 10);
-  draw('Dokumen mockup Fase 4 — bukan sertifikat resmi.', 50, 120, 9);
+  draw('150-point inspection • Garansi laporan 30 hari', 50, 662, 10);
+  draw('Laporan ini bukan sertifikat resmi.', 50, 120, 9);
   const bytes = await doc.save();
   return new Blob([bytes as unknown as BlobPart], { type: 'application/pdf' });
 }

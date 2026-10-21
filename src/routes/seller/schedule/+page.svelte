@@ -17,7 +17,7 @@
   let rows: Row[] = [];
   // Permintaan "lihat mobil" dari calon pembeli (order rahasia). Terpisah dari
   // `rows` di atas yang hanya berisi order purna-beli.
-  type Viewing = { request_id: string; vehicle: string; requester: string; slot: string; status: string; location?: string };
+  type Viewing = { request_id: string; vehicle: string; requester: string; slot: string; status: string; location?: string; report_id?: string | null };
   let viewings: Viewing[] = [];
   let openView: string | null = null;
   let viewMsg: Record<string, string> = {};
@@ -29,6 +29,13 @@
   const slots = ['Jumat, 5 Juni • 10:00 WIB', 'Jumat, 5 Juni • 13:00 WIB', 'Sabtu, 6 Juni • 09:00 WIB'];
   $: pending = rows.filter((r) => r.status === 'pending');
   $: scheduled = rows.filter((r) => r.status !== 'pending');
+  // Permintaan lihat mobil dipisah: yang masih menunggu vs yang sudah disetujui.
+  // Yang sudah disetujui pindah ke bagian "Terjadwal" di bawah.
+  $: viewPending = viewings.filter((v) => v.status !== 'approved');
+  $: viewApproved = viewings.filter((v) => v.status === 'approved' && !v.report_id);
+  // Sudah ada laporannya => kunjungan sudah selesai. Dari sisi penjual ini tetap
+  // "kunjungan calon pembeli" — konteks inspeksinya tidak pernah dibuka ke seller.
+  $: viewDone = viewings.filter((v) => v.status === 'approved' && v.report_id);
   onMount(async () => {
     const uid = getSession()?.id;
     if (uid) {
@@ -110,15 +117,13 @@
     {#if loaded && !live}<span class="pill-amber">Data contoh</span>{/if}
   </div>
 
-  {#if viewings.length}
+  {#if viewPending.length}
     <p class="ts-eyebrow">Permintaan Lihat Mobil</p>
-    {#each viewings as v (v.request_id)}
+    {#each viewPending as v (v.request_id)}
       <div class="ts-card {openView === v.request_id ? 'ring-2 ring-brand-400' : ''}">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <p class="font-bold">{v.vehicle}</p>
-          <span class={v.status === 'approved' ? 'pill-green' : v.status === 'proposed' ? 'pill-blue' : 'pill-amber'}>
-            {v.status === 'approved' ? 'Waktu disetujui' : v.status === 'proposed' ? 'Usulan terkirim' : 'Menunggu waktu lihat'}
-          </span>
+          <span class="pill-amber">Menunggu waktu lihat</span>
         </div>
         <div class="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.8125rem] text-slate-500">
           <span class="inline-flex items-center gap-1.5"><CircleUserRound class="size-4" /> {v.requester}</span>
@@ -191,11 +196,50 @@
   {/each}
 
   <p class="ts-eyebrow">Terjadwal</p>
-  {#if !scheduled.length}
+  {#if !viewApproved.length && !viewDone.length && !scheduled.length}
     <div class="ts-card text-center">
       <p class="text-sm text-slate-500">Belum ada jadwal yang disetujui.</p>
     </div>
   {/if}
+  {#each viewDone as v (v.request_id)}
+    <div class="ts-card">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <p class="font-bold">{v.vehicle}</p>
+        <span class="pill-green">Kunjungan Selesai</span>
+      </div>
+      <p class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.8125rem] text-slate-500">
+        <span class="inline-flex items-center gap-1.5"><CircleUserRound class="size-4" /> {v.requester}</span>
+        <span class="inline-flex items-center gap-1.5"><CalendarCheck class="size-4" /> {v.slot}</span>
+      </p>
+      <p class="mt-2 text-sm text-slate-500">Calon pembeli sudah selesai melihat mobil.</p>
+    </div>
+  {/each}
+  {#each viewApproved as v (v.request_id)}
+    <div class="ts-card {openView === v.request_id ? 'ring-2 ring-brand-400' : ''}">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <p class="font-bold">{v.vehicle}</p>
+        <span class="pill-green">Waktu disetujui</span>
+      </div>
+      <p class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.8125rem] text-slate-500">
+        <span class="inline-flex items-center gap-1.5"><CircleUserRound class="size-4" /> {v.requester}</span>
+        <span class="inline-flex items-center gap-1.5"><CalendarCheck class="size-4" /> {v.slot}</span>
+      </p>
+      {#if viewMsg[v.request_id]}<p class="mt-2 text-sm text-emerald-700">{viewMsg[v.request_id]}</p>{/if}
+      <div class="mt-3 flex gap-2">
+        <button class="min-h-11 flex-1 rounded-xl border font-bold" on:click={() => (openView = openView === v.request_id ? null : v.request_id)}>Ubah Waktu</button>
+      </div>
+      {#if openView === v.request_id}
+        <div class="mt-3 grid gap-2 border-t border-slate-100 pt-3">
+          <p class="text-[0.8125rem] font-bold text-slate-500">Usulkan waktu lain:</p>
+          <div class="flex flex-wrap gap-2">
+            {#each slots as s}
+              <button class="min-h-11 rounded-xl border px-3 text-[0.8125rem] font-semibold" on:click={() => doViewing(v.request_id, 'alternative', s)}>{s}</button>
+            {/each}
+          </div>
+        </div>
+      {/if}
+    </div>
+  {/each}
   {#each scheduled as o (o.id)}
     <div class="ts-card">
       <div class="flex flex-wrap items-center justify-between gap-2">

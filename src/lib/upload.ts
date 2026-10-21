@@ -1,4 +1,39 @@
-import { api } from './api';
+import { API_BASE } from './config';
+
+export interface UploadedFile {
+  /** Path relatif ke static/, mis. vehicles/honda-brio-rs-2021/hero.jpg */
+  path: string;
+  /** URL publik, mis. /vehicles/honda-brio-rs-2021/hero.jpg */
+  url: string;
+  bytes: number;
+  contentType: string;
+  /** false kalau file tidak bisa ditulis ke disk (mis. produksi). */
+  saved: boolean;
+}
+
+/**
+ * Unggah file ke folder statis.
+ *
+ * Server menaruhnya di `<vehicles|licenses|inspections>/<folder>/<nama file>.<ext>` —
+ * jadi foto otomatis masuk ke subfoldernya, di dalam folder static yang sudah ada.
+ */
+export async function uploadFile(
+  file: File,
+  opts: { purpose: 'vehicle' | 'license' | 'inspection'; folder: string; filename?: string }
+): Promise<UploadedFile> {
+  const fd = new FormData();
+  fd.append('file', file, file.name);
+  fd.append('purpose', opts.purpose);
+  fd.append('folder', opts.folder);
+  if (opts.filename) fd.append('filename', opts.filename);
+  const r = await fetch(`${API_BASE}/uploads`, { method: 'POST', body: fd });
+  const j = (await r.json().catch(() => null)) as
+    | { ok: true; data: UploadedFile }
+    | { ok: false; error: { message: string } }
+    | null;
+  if (!j?.ok) throw new Error(j?.error?.message ?? 'Upload gagal');
+  return j.data;
+}
 
 export async function compressImage(file: File, maxKB = 1024): Promise<Blob> {
   // MVP: downscale via canvas agar <1MB sebelum upload (hemat R2 + cepat di HP)
@@ -14,20 +49,4 @@ export async function compressImage(file: File, maxKB = 1024): Promise<Blob> {
   return await new Promise<Blob>((resolve, reject) =>
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('compress gagal'))), 'image/jpeg', 0.82)
   );
-}
-
-export async function signAndUpload(
-  file: File | Blob,
-  purpose: 'vehicle' | 'inspection' | 'avatar' | 'license' | 'signature' | 'chat',
-  contentType = 'image/jpeg'
-): Promise<string> {
-  const sign = await api.post<{ signedUrl: string; r2_key: string }>('/uploads/sign', {
-    purpose,
-    contentType,
-    size: (file as Blob).size
-  });
-  if (!sign.ok) throw new Error(sign.error.message);
-  const put = await fetch(sign.data.signedUrl, { method: 'PUT', body: file });
-  if (!put.ok) throw new Error(`Upload gagal (${put.status})`);
-  return sign.data.r2_key;
 }

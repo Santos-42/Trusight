@@ -1,9 +1,12 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { BellRing, CalendarClock, CircleUserRound } from '@lucide/svelte';
+  import { BellRing, CalendarClock, CircleUserRound, Plus, X } from '@lucide/svelte';
   import { api } from '$lib/api';
   import { getSession } from '$lib/guest';
-  import { mockVehicles, certificationBadge, type MockVehicle } from '$lib/mocks';
+  import { loadCatalog, type CatalogVehicle } from '$lib/catalog';
+  import { certificationBadge, type MockVehicle } from '$lib/mocks';
+  import { fileUrl } from '$lib/files';
+  import { compressImage, uploadFile } from '$lib/upload';
   import { rupiah } from '$lib/format';
   let msg = '';
   // Permintaan "mau lihat mobil" — dari order RAHASIA. Datang tanpa konteks
@@ -17,7 +20,20 @@
   let loaded = false;
   // Katalog milik seller — hanya locationArea (kota/kecamatan); lokasi detail tidak
   // pernah dikirim ke seller (lihat src/lib/server/d1.ts listOrders).
-  let myVehicles = [...mockVehicles];
+  let myVehicles: CatalogVehicle[] = [];
+
+  // --- tambah iklan sendiri ---
+  let showForm = false;
+  let saving = false;
+  let formErr = '';
+  let form = { title: '', year: '', price: '', mileage: '', locationArea: '', color: '', plateNo: '' };
+  let photoFile: File | null = null;
+  let photoPreview = '';
+  let photoMsg = '';
+
+  async function refreshCatalog(uid: string) {
+    myVehicles = await loadCatalog(uid);
+  }
 
   /** Hasil inspeksi baru boleh terlihat seller SETELAH mobil terjual. */
   function badgeOf(v: MockVehicle): { cls: string; label: string } {
@@ -29,14 +45,81 @@
   async function markSold(id: string) {
     const r = await api.post(`/vehicles/${id}/sold`, {});
     if (!r.ok) return;
-    const target = myVehicles.find((x) => x.id === id);
-    if (target) target.status = 'sold';
-    myVehicles = [...myVehicles];
+    await refreshCatalog(getSession()?.id ?? '');
+  }
+
+  /** Pilih foto dari file — nanti otomatis masuk ke folder bernama mobilnya. */
+  async function pickPhoto(e: Event) {
+    const input = e.currentTarget as HTMLInputElement;
+    const f = input.files?.[0];
+    if (!f) return;
+    if (!f.type.startsWith('image/')) {
+      formErr = 'File harus berupa gambar.';
+      return;
+    }
+    photoFile = f;
+    photoPreview = URL.createObjectURL(f);
+    formErr = '';
+  }
+
+  async function addListing() {
+    formErr = '';
+    if (!form.title.trim() || !form.year || !form.price || !form.locationArea.trim()) {
+      formErr = 'Nama mobil, tahun, harga, dan area wajib diisi.';
+      return;
+    }
+    saving = true;
+    const r = await api.post<{ id: string }>('/vehicles', {
+      sellerId: getSession()?.id,
+      title: form.title.trim(),
+      year: Number(form.year),
+      price: Number(form.price),
+      mileage: form.mileage ? Number(form.mileage) : undefined,
+      locationArea: form.locationArea.trim(),
+      color: form.color.trim() || undefined,
+      plateNo: form.plateNo.trim() || undefined
+    });
+    if (!r.ok) {
+      saving = false;
+      formErr = r.error.message;
+      return;
+    }
+
+    // Foto disimpan ke static/vehicles/<nama-mobil>/hero.<ext> — folder statis yang
+    // sudah ada, cuma dibuat subfolder baru bernama mobilnya.
+    if (photoFile) {
+      try {
+        const small = await compressImage(photoFile, 700);
+        const up = await uploadFile(new File([small], 'hero.jpg', { type: 'image/jpeg' }), {
+          purpose: 'vehicle',
+          folder: r.data.id
+        });
+        await api.post(`/vehicles/${r.data.id}/cover`, { cover: up.url });
+        photoMsg = up.saved
+          ? `Foto tersimpan di static/${up.path} — commit file ini agar ikut tayang saat deploy.`
+          : `Di produksi file tidak bisa disimpan otomatis. Simpan manual ke static/${up.path} lalu commit.`;
+      } catch (e2) {
+        formErr = e2 instanceof Error ? `Foto gagal diunggah: ${e2.message}` : 'Foto gagal diunggah.';
+        saving = false;
+        await refreshCatalog(getSession()?.id ?? '');
+        return;
+      }
+    }
+
+    saving = false;
+    form = { title: '', year: '', price: '', mileage: '', locationArea: '', color: '', plateNo: '' };
+    photoFile = null;
+    photoPreview = '';
+    showForm = false;
+    msg = 'Iklan baru ditambahkan dan langsung tayang di katalog.';
+    await refreshCatalog(getSession()?.id ?? '');
   }
 
   onMount(async () => {
     const uid = getSession()?.id;
     if (uid) {
+      await refreshCatalog(uid);
+
       const v = await api.get<Viewing[]>(`/viewings/incoming?sellerId=${encodeURIComponent(uid)}`);
       if (v.ok) viewings = v.data;
 
@@ -57,11 +140,67 @@
   </div>
   <div class="grid items-start gap-4 lg:grid-cols-2">
     <div class="grid content-start gap-4">
-      <h2 class="text-lg font-bold">Mobil Anda ({myVehicles.length})</h2>
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <h2 class="text-lg font-bold">Mobil Anda ({myVehicles.length})</h2>
+        <button
+          class="inline-flex min-h-10 items-center gap-2 rounded-xl bg-ink-900 px-3 text-xs font-bold text-white"
+          on:click={() => { showForm = !showForm; formErr = ''; photoMsg = ''; }}
+        >
+          {#if showForm}<X class="size-4" /> Batal{:else}<Plus class="size-4" /> Tambah Iklan{/if}
+        </button>
+      </div>
+
+      {#if showForm}
+        <div class="ts-card grid gap-3">
+          <p class="font-bold">Tambah Iklan Baru</p>
+          <label class="grid gap-1 text-sm font-semibold">Nama Mobil
+            <input class="ts-field-sm" placeholder="Honda Brio RS 2021" bind:value={form.title} />
+          </label>
+          <div class="grid grid-cols-2 gap-2">
+            <label class="grid gap-1 text-sm font-semibold">Tahun
+              <input class="ts-field-sm" type="number" placeholder="2021" bind:value={form.year} />
+            </label>
+            <label class="grid gap-1 text-sm font-semibold">Harga (Rp)
+              <input class="ts-field-sm" type="number" placeholder="178000000" bind:value={form.price} />
+            </label>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <label class="grid gap-1 text-sm font-semibold">Kilometre
+              <input class="ts-field-sm" type="number" placeholder="38000" bind:value={form.mileage} />
+            </label>
+            <label class="grid gap-1 text-sm font-semibold">Warna
+              <input class="ts-field-sm" placeholder="Merah" bind:value={form.color} />
+            </label>
+          </div>
+          <label class="grid gap-1 text-sm font-semibold">Area / Kota
+            <input class="ts-field-sm" placeholder="Margonda, Kota Depok" bind:value={form.locationArea} />
+          </label>
+          <label class="grid gap-1 text-sm font-semibold">Nomor Pelat (opsional)
+            <input class="ts-field-sm" placeholder="B 1234 XY" bind:value={form.plateNo} />
+          </label>
+          <label class="grid gap-1 text-sm font-semibold">Foto Mobil (opsional)
+            <input
+              class="ts-field-sm file:mr-3 file:rounded-lg file:border-0 file:bg-ink-900 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-white"
+              type="file"
+              accept="image/*"
+              on:change={pickPhoto}
+            />
+          </label>
+          {#if photoPreview}
+            <img src={photoPreview} alt="Pratinjau foto" class="h-40 w-full rounded-xl object-cover" />
+            <p class="text-xs text-slate-500">Foto akan otomatis diletakkan di folder bernama mobil ini.</p>
+          {/if}
+          {#if formErr}<p class="text-sm text-red-600">{formErr}</p>{/if}
+          <button class="btn-blue" disabled={saving} on:click={addListing}>{saving ? 'Menyimpan...' : 'Simpan & Tayangkan'}</button>
+        </div>
+      {/if}
       <div class="grid max-h-[26rem] gap-3 overflow-y-auto pr-1">
         {#each myVehicles as v (v.id)}
           <div class="ts-card flex items-start justify-between gap-3">
-            <div class="min-w-0">
+            {#if v.cover}
+              <img src={fileUrl(v.cover)} alt={v.title} class="size-16 shrink-0 rounded-xl object-cover" />
+            {/if}
+            <div class="min-w-0 flex-1">
               <p class="text-lg font-bold">{v.title}</p>
               <p class="text-xs text-slate-500">{v.locationArea} • {rupiah(v.price)}</p>
               {#if v.status !== 'sold'}
@@ -77,13 +216,10 @@
       {#if !loaded}
         <div class="rounded-[20px] border border-brand-200 bg-brand-100/50 p-5 text-[0.8125rem] text-slate-500">Memuat permintaan…</div>
       {:else if viewings.length}
-        {#each viewings as q (q.request_id)}
-          <div class="rounded-[20px] border border-brand-200 bg-brand-100/50 p-5">
-            <p class="flex items-center gap-2 font-bold"><CalendarClock class="size-5" /> Ada yang mau lihat mobil Anda</p>
-            <p class="mt-1 text-[0.8125rem] text-slate-500">Calon pembeli '{q.requester}' ingin melihat {q.vehicle} Anda.</p>
-            <a href="/seller/schedule" class="btn-blue mt-3 w-full">Atur Waktu Lihat</a>
-          </div>
-        {/each}
+        <a href="/seller/schedule" class="block rounded-[20px] border border-brand-200 bg-brand-100/50 p-5 transition hover:border-brand-400">
+          <p class="flex items-center gap-2 font-bold"><CalendarClock class="size-5" /> Ada yang mau lihat mobil Anda</p>
+          <p class="btn-blue mt-3 w-full">Atur Waktu Lihat</p>
+        </a>
       {:else if live}
         <div class="rounded-[20px] border border-slate-100 bg-white p-5 text-center">
           <p class="font-bold">Belum ada yang mau lihat mobil Anda</p>
@@ -106,4 +242,5 @@
     </div>
   </div>
   {#if msg}<p class="text-sm">{msg}</p>{/if}
+  {#if photoMsg}<p class="text-sm text-amber-700">{photoMsg}</p>{/if}
 </div>

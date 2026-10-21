@@ -1,8 +1,15 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import VehicleCard from '$lib/components/vehicle/VehicleCard.svelte';
+  import { loadCatalog, type CatalogVehicle } from '$lib/catalog';
   import { mockVehicles } from '$lib/mocks';
-  let q='';
-  $: filtered = mockVehicles.filter(v => v.title.toLowerCase().includes(q.toLowerCase()));
+
+  let q = '';
+  let catalog: CatalogVehicle[] = mockVehicles;
+  onMount(async () => {
+    catalog = await loadCatalog();
+  });
+  $: filtered = catalog.filter((v) => v.title.toLowerCase().includes(q.toLowerCase()));
 </script>
 <svelte:head><title>Cari — TruSight</title></svelte:head>
 <div class="grid gap-4">

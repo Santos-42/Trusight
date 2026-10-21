@@ -93,7 +93,7 @@ describe('endpoint live D1', () => {
 
     const rep = await (await GET(ctx(`reports/${sub.data.reportId}`, 'GET', null, db))).json();
     expect(rep.ok).toBe(true);
-    expect(rep.data).toMatchObject({ recommendation: 'nego', repair_estimate: 1500000 });
+    expect(rep.data).toMatchObject({ recommendation: 'beli', repair_estimate: 1500000 });
     expect(rep.data.items).toHaveLength(2);
     expect(rep.data.photos).toHaveLength(1);
     expect(rep.data.guarantee_until).toBeTruthy();

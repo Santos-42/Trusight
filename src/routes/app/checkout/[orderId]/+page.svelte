@@ -6,12 +6,13 @@
   import { api } from '$lib/api';
   import { getSession, requireAuth } from '$lib/guest';
   import { findVehicle } from '$lib/mocks';
+  import { fileUrl } from '$lib/files';
   import { rupiah } from '$lib/format';
   $: orderId = $page.params.orderId;
   let method: 'CARD' | 'QRIS' | 'TRANSFER' = 'CARD', msg = '';
   let claimed: string[] = [];
   let voucher = '';
-  type OrderInfo = { id: string; vehicle_id?: string; vehicle?: string; type: string; status: string; total: number };
+  type OrderInfo = { id: string; vehicle_id?: string; vehicle?: string; type: string; status: string; total: number; cover?: string | null };
   let order: OrderInfo | null = null;
   const usable = ['TRU20', 'HEMAT50'];
   onMount(async () => {
@@ -61,7 +62,7 @@
         <div class="flex gap-4">
           <span class="grid size-20 shrink-0 place-items-center overflow-hidden rounded-2xl bg-ink-900 text-white">
             {#if car}
-              <img src={car.cover} alt={car.title} class="h-full w-full object-cover" />
+              <img src={fileUrl(order?.cover || car?.cover)} alt={car?.title ?? 'Kendaraan'} class="h-full w-full object-cover" />
             {/if}
           </span>
           <div class="flex flex-1 items-start justify-between gap-2">

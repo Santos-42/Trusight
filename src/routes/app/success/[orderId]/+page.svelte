@@ -5,8 +5,9 @@
   import { api } from '$lib/api';
   import { getSession } from '$lib/guest';
   import { findVehicle } from '$lib/mocks';
+  import { fileUrl } from '$lib/files';
   $: orderId = $page.params.orderId ?? 'TS-98211';
-  type OrderInfo = { id: string; vehicle_id?: string; vehicle?: string; type: string; status: string; created_at?: string; location?: string; location_detail?: string | null; location_revealed?: boolean };
+  type OrderInfo = { id: string; vehicle_id?: string; vehicle?: string; type: string; status: string; created_at?: string; location?: string; location_detail?: string | null; location_revealed?: boolean; cover?: string | null };
   let order: OrderInfo | null = null;
   onMount(async () => {
     const viewerId = getSession()?.id ?? '';
@@ -39,7 +40,7 @@
         <div><p class="ts-eyebrow">Service Type</p><p class="mt-0.5 flex items-center gap-1.5 font-bold"><Zap class="size-4 text-brand-600" /> {order?.type === 'fast-track' ? 'Fast Track' : 'Standard'}</p></div>
         <div class="flex gap-3">
           <span class="grid size-16 shrink-0 place-items-center overflow-hidden rounded-xl bg-ink-900 text-white">
-            {#if car}<img src={car.cover} alt={car.title} class="h-full w-full object-cover" />{:else}<Car class="size-8" />{/if}
+            {#if order?.cover || car}<img src={fileUrl(order?.cover || car?.cover)} alt={car?.title ?? 'Kendaraan'} class="h-full w-full object-cover" />{:else}<Car class="size-8" />{/if}
           </span>
           <div class="text-[0.8125rem]">
             <p class="ts-eyebrow">Target Vehicle</p>
