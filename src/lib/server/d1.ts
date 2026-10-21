@@ -31,8 +31,55 @@ export type OrderMode = 'covert' | 'post-purchase';
 
 export interface OrderInput { vehicleId: string; type: string; buyerId: string; mode?: OrderMode }
 
+/** Fallback bila belum ada inspektor terverifikasi — senada dengan default approveOrder. */
+const FALLBACK_INSPECTOR = 'u-bsantoso';
+
+/**
+ * Pilih inspektor untuk order baru. Deterministik supaya hasilnya selalu sama saat
+ * testing: prioritaskan region yang cocok dengan lokasi kendaraan, lalu inspektor
+ * terverifikasi dengan beban paling ringan.
+ */
+export async function pickInspector(db: Db, location?: string): Promise<string> {
+  const rows = await qAll<{ id: string; region: string | null }>(db,
+    `SELECT u.id, p.region FROM users u
+     JOIN inspector_profiles p ON p.user_id=u.id
+     WHERE u.role='inspector' AND p.status='verified'
+     ORDER BY p.total_inspections ASC`);
+  if (!rows.length) return FALLBACK_INSPECTOR;
+  const key = (location ?? '').toLowerCase().trim();
+  if (key) {
+    const near = rows.find((r) => {
+      const reg = (r.region ?? '').toLowerCase().trim();
+      if (!reg) return false;
+      if (reg.includes(key) || key.includes(reg)) return true;
+      // Cocokkan per kata: region "DKI Jakarta" harus match lokasi "Jakarta Selatan".
+      return reg.split(/\s+/).some((w) => w.length > 3 && key.includes(w));
+    });
+    if (near) return near.id;
+  }
+  return rows[0].id;
+}
+
+/**
+ * Tugaskan inspektor ke sebuah order: tulis jadwal + buat thread chat
+ * pembeli ↔ inspektor. Dipanggil otomatis dari createOrder, jadi begitu buyer
+ * menekan ORDER VERIFICATION inspektornya sudah melekat.
+ */
+export async function assignInspector(
+  db: Db,
+  b: { orderId: string; buyerId: string; inspectorId?: string; location?: string; slot?: string }
+): Promise<string> {
+  const inspectorId = b.inspectorId || (await pickInspector(db, b.location));
+  await exec(db, `INSERT INTO schedules (id, order_id, proposed_by, datetime, inspector_id, status)
+    VALUES (?,?,?,?,?,?)`, uid('SCH'), b.orderId, 'trusight', b.slot ?? 'menunggu jadwal inspektor', inspectorId, 'approved');
+  // Thread inspeksi: pembeli <-> inspektor, TANPA seller.
+  await ensureConversation(db, { orderId: b.orderId, buyerId: b.buyerId, inspectorId, kind: 'inspection' });
+  return inspectorId;
+}
+
 export async function createOrder(db: Db, b: OrderInput) {
-  const v = await qOne<{ price: number; seller_id: string }>(db, 'SELECT price, seller_id FROM vehicles WHERE id=?', b.vehicleId);
+  const v = await qOne<{ price: number; seller_id: string; location_area: string | null; location: string | null }>(
+    db, 'SELECT price, seller_id, location_area, location FROM vehicles WHERE id=?', b.vehicleId);
   if (!v) throw Object.assign(new Error('Kendaraan tidak ditemukan'), { code: 'NOT_FOUND' });
   // Opsi A: tolak bila buyer masih punya pesanan aktif untuk kendaraan yang sama.
   const active = await qOne<{ id: string }>(db,
@@ -52,11 +99,20 @@ export async function createOrder(db: Db, b: OrderInput) {
   const id = `TS-${num5()}`;
   await exec(db, 'INSERT INTO orders (id, buyer_id, vehicle_id, type, status, total, mode) VALUES (?,?,?,?,?,?,?)',
     id, b.buyerId, b.vehicleId, type, 'pending', PRICING[type], mode);
-  return { orderId: id, total: PRICING[type], status: 'pending', sellerId: v.seller_id, mode };
+
+  // INSPEKTUR OTOMATIS TER-ASSIGN begitu order dibuat — buyer tidak perlu menunggu.
+  // Lokasi kendaraan dipakai untuk mencari inspektor dengan region terdekat.
+  const inspectorId = await assignInspector(db, {
+    orderId: id,
+    buyerId: b.buyerId,
+    location: v.location_area ?? v.location ?? undefined
+  });
+
+  return { orderId: id, total: PRICING[type], status: 'pending', sellerId: v.seller_id, mode, inspectorId };
 }
 
 export interface OrderFilter { buyerId?: string; sellerId?: string; inspectorId?: string; status?: string }
-export function listOrders(db: Db, f: OrderFilter) {
+export async function listOrders(db: Db, f: OrderFilter) {
   // PRIVASI LOKASI: hanya v.location_area (kota/kecamatan) yang pernah dikirim
   // lewat list. Lokasi detail sengaja tidak dipilih di sini supaya tidak bocor ke
   // seller lewat /orders/incoming — tidak peduli apa pun filter-nya.
@@ -78,12 +134,23 @@ export function listOrders(db: Db, f: OrderFilter) {
   }
   if (f.status && f.status !== 'all') { where.push('o.status=?'); p.push(f.status); }
   if (f.inspectorId) {
+    // Satu order bisa punya LEBIH DARI SATU baris schedules (auto-assign + permintaan
+    // lihat mobil), jadi JOIN menghasilkan ordernya lebih dari sekali. Duplikatnya
+    // dibuang sebelum dikembalikan — lihat dedupe di bawah.
     sql += ' JOIN schedules s ON s.order_id=o.id';
     where.push('s.inspector_id=?'); p.push(f.inspectorId);
   }
   if (where.length) sql += ' WHERE ' + where.join(' AND ');
   sql += ' ORDER BY o.created_at DESC';
-  return qAll(db, sql, ...p);
+  const rows = await qAll<Record<string, unknown>>(db, sql, ...p);
+  if (!f.inspectorId) return rows;
+  const seen = new Set<string>();
+  return rows.filter((r) => {
+    const id = String(r.id ?? '');
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
 }
 
 /** Apakah order sudah dibayar? `orders.status` sengaja TIDAK mencerminkan pembayaran
@@ -146,9 +213,10 @@ export async function approveOrder(db: Db, b: ApproveInput) {
   await exec(db, `INSERT INTO schedules (id, order_id, proposed_by, datetime, inspector_id, status)
     VALUES (?,?,?,?,?,?)`, uid('SCH'), b.orderId, 'seller', slot, inspectorId,
     b.action === 'approve' ? 'approved' : 'proposed');
-  // C2: inspector masuk sebagai peserta conversation order
+  // C2: inspektor <-> penjual masuk thread jual-beli. Pembeli sengaja TIDAK ikut
+  // (buyer_id '') — percakapan pembeli dengan inspektor ada di thread 'inspection'.
   const v = await qOne<{ seller_id: string }>(db, 'SELECT seller_id FROM vehicles WHERE id=?', o.vehicle_id);
-  if (v) await ensureConversation(db, { orderId: b.orderId, buyerId: o.buyer_id, sellerId: v.seller_id, inspectorId });
+  if (v) await ensureConversation(db, { orderId: b.orderId, buyerId: '', sellerId: v.seller_id, inspectorId, kind: 'sale' });
   return { orderId: b.orderId, status: 'scheduled', slot };
 }
 
@@ -277,13 +345,31 @@ export function createInspectionThread(db: Db, b: { orderId: string; buyerId: st
  * Inilah cara akses untuk order covert: di mata seller ini calon pembeli biasa,
  * bukan permintaan inspeksi.
  */
-export async function requestViewing(db: Db, b: { orderId: string; inspectorId: string; slot?: string }) {
-  const o = await qOne<{ id: string }>(db, 'SELECT id FROM orders WHERE id=?', b.orderId);
+export async function requestViewing(db: Db, b: { orderId: string; inspectorId?: string; slot?: string }) {
+  const o = await qOne<{ id: string; buyer_id: string; vehicle_id: string }>(db,
+    'SELECT id, buyer_id, vehicle_id FROM orders WHERE id=?', b.orderId);
   if (!o) throw Object.assign(new Error('Order tidak ditemukan'), { code: 'NOT_FOUND' });
+
+  // Pakai inspektor yang sudah ter-assign ke order, bukan yang dikirim client.
+  const assigned = await qOne<{ inspector_id: string }>(db,
+    'SELECT inspector_id FROM schedules WHERE order_id=? AND inspector_id IS NOT NULL ORDER BY rowid ASC LIMIT 1', b.orderId);
+  const inspectorId = assigned?.inspector_id || b.inspectorId || FALLBACK_INSPECTOR;
+
+  const v = await qOne<{ seller_id: string }>(db, 'SELECT seller_id FROM vehicles WHERE id=?', o.vehicle_id);
+
   const slot = b.slot ?? 'usulan waktu lihat';
   await exec(db, `INSERT INTO schedules (id, order_id, proposed_by, datetime, inspector_id, status)
-    VALUES (?,?,?,?,?,?)`, uid('SCH'), b.orderId, 'inspector', slot, b.inspectorId || 'u-bsantoso', 'proposed');
-  return { orderId: b.orderId, status: 'proposed', slot };
+    VALUES (?,?,?,?,?,?)`, uid('SCH'), b.orderId, 'inspector', slot, inspectorId, 'proposed');
+
+  // Thread jual-beli: INSPEKTOR <-> PENJUAL. Inspektor menyamar jadi calon pembeli,
+  // jadi dari sisi penjual ini percakapan biasa — tanpa konteks inspeksi sama sekali.
+  // buyer_id sengaja '' karena pembeli TIDAK ikut thread ini; percakapan pembeli
+  // dengan inspektor terjadi terpisah di thread 'inspection'.
+  if (v) {
+    await ensureConversation(db, { orderId: b.orderId, buyerId: '', sellerId: v.seller_id, inspectorId, kind: 'sale' });
+  }
+
+  return { orderId: b.orderId, status: 'proposed', slot, inspectorId };
 }
 
 /**

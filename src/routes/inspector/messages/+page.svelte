@@ -21,15 +21,17 @@
     }[]>(`/conversations?userId=${encodeURIComponent(uid)}`);
     if (r.ok && r.data.length) {
       const mapped: Thread[] = r.data.map((c) => {
-        // Thread 'inspection' tidak melibatkan penjual — jangan tampilkan di tab Penjual.
-        const with_ = ([] as ('a' | 'b')[]).concat(
-          c.buyer_name ? ['a'] : [],
-          c.kind !== 'inspection' && c.seller_name ? ['b'] : []
-        );
+        // kind 'inspection' = dengan PEMBELI (tab Pembeli) — soal inspeksi, ikut datang
+        // kind 'sale'       = dengan PENJUAL (tab Penjual) — inspektor menyamar jadi calon
+        //                     pembeli, jadi isinya soal lihat mobil, bukan inspeksi
+        const inspection = c.kind === 'inspection';
         return {
-          id: c.id, name: c.buyer_name ?? c.seller_name ?? `Order ${c.order_id}`,
-          snippet: c.last_msg ?? 'Belum ada pesan', with: with_.length ? with_ : ['a'],
-          nameA: c.buyer_name ?? 'Pembeli', nameB: c.seller_name ?? 'Penjual'
+          id: c.id,
+          name: (inspection ? c.buyer_name : c.seller_name) ?? (inspection ? 'Pembeli' : 'Penjual'),
+          snippet: c.last_msg ?? 'Belum ada pesan',
+          with: (inspection ? ['a'] : ['b']) as ('a' | 'b')[],
+          nameA: c.buyer_name ?? 'Pembeli',
+          nameB: c.seller_name ?? 'Penjual'
         };
       });
       threads = sortThreads(mapped);

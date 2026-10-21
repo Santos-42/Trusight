@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { memDb } from '../stub/d1-mem';
 import {
   approveOrder, canRevealLocation, checkin, claimVoucher, createInspectionThread, createOrder, ensureConversation, getOrder, getReport,
-  getReportDetail, isOrderPaid, listViewingRequests, markVehicleSold, requestViewing, respondToViewing,
+  getReportDetail, isOrderPaid, listViewingRequests, markVehicleSold, pickInspector, requestViewing, respondToViewing,
   listConversations, listInspectionItems, listMessages, listOrders, listVouchers, postMessage, publishReport, quoteVoucher,
   resetDemo, submitInspection
 } from '$lib/server/d1';
@@ -93,9 +93,12 @@ describe('alur order lintas role', () => {
     await postMessage(db, { conversationId: c1.conversationId, senderId: 'u-bsantoso', body: 'Siap' });
     const msgs = await listMessages(db, c1.conversationId);
     expect(msgs.map((m) => m.body)).toEqual(['Halo pak', 'Siap']);
+    // Inspektor kini punya 2 thread untuk order yang sama: 'inspection' (otomatis dari
+    // createOrder) dan 'sale' (dibuat ensureConversation di atas).
     const convs = await listConversations(db, 'u-bsantoso');
-    expect(convs).toHaveLength(1);
-    expect(convs[0].last_msg).toBe('Siap');
+    expect(convs).toHaveLength(2);
+    expect(convs.map((c) => (c as { kind: string }).kind).sort()).toEqual(['inspection', 'sale']);
+    expect(convs.find((c) => (c as { kind: string }).kind === 'sale')?.last_msg).toBe('Siap');
   });
 });
 
@@ -119,11 +122,15 @@ describe('voucher DB', () => {
     const db = memDb(SEED);
     const o = await createOrder(db, { vehicleId: 'civic-2021', type: 'standard', buyerId: 'u-budi', mode: 'post-purchase' });
     await approveOrder(db, { orderId: o.orderId, inspectorId: 'u-bsantoso', action: 'approve', slot: 'Kamis' });
+    // 'inspection' (pembeli<->inspektor, otomatis) + 'sale' (inspektor<->penjual, dari approve)
     const convs = await listConversations(db, 'u-bsantoso');
-    expect(convs).toHaveLength(1);
-    // Nama lawan bicara ikut terbawa untuk filter inbox per-peran
-    expect((convs[0] as { buyer_name: string }).buyer_name).toBe('Budi Perkasa');
-    expect((convs[0] as { seller_name: string }).seller_name).toBe('Hendra Wijaya');
+    expect(convs).toHaveLength(2);
+    const inspection = convs.find((c) => (c as { kind: string }).kind === 'inspection');
+    const sale = convs.find((c) => (c as { kind: string }).kind === 'sale');
+    expect((inspection as { buyer_name: string }).buyer_name).toBe('Budi Perkasa');
+    expect((sale as { seller_name: string }).seller_name).toBe('Hendra Wijaya');
+    // Pembeli TIDAK ikut thread jual-beli — itu yang menjaga kerahasiaan
+    expect((sale as { buyer_name: string | null }).buyer_name).toBeFalsy();
     await expect(postMessage(db, { conversationId: 'conv-tak-ada', senderId: 'u-budi', body: 'halo' }))
       .rejects.toThrow('Percakapan tidak ditemukan');
   });
@@ -257,6 +264,43 @@ describe('inspeksi rahasia (mode covert)', () => {
 
     await expect(respondToViewing(db, { requestId: 'sch-tak-ada', action: 'approve' }))
       .rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+
+  it('inspektor otomatis ter-assign saat order dibuat', async () => {
+    const db = memDb(SEED);
+    const o = await createOrder(db, { vehicleId: 'civic-2021', type: 'standard', buyerId: 'u-budi' });
+    expect(o.inspectorId).toBeTruthy();
+
+    // Jadwal langsung melekat ke inspektor itu, dan ordernya muncul di tugasnya
+    const assigned = await listOrders(db, { inspectorId: o.inspectorId as string });
+    expect(assigned).toHaveLength(1);
+
+    // Thread pembeli <-> inspektor langsung terbentuk — tanpa seller
+    const buyerConvs = await listConversations(db, 'u-budi');
+    expect(buyerConvs).toHaveLength(1);
+    expect((buyerConvs[0] as { kind: string }).kind).toBe('inspection');
+    expect(await listConversations(db, 'u-hendra')).toHaveLength(0);
+  });
+
+  it('pickInspector: region yang cocok menang, selain itu beban paling ringan', async () => {
+    const db = memDb({
+      users: [
+        { id: 'i-berat', role: 'inspector', name: 'Berat', email: 'berat@x', password_hash: 'h' },
+        { id: 'i-ringan', role: 'inspector', name: 'Ringan', email: 'ringan@x', password_hash: 'h' },
+        { id: 'i-batal', role: 'inspector', name: 'Batal', email: 'batal@x', password_hash: 'h' }
+      ]
+    });
+    const add = (id: string, region: string, total: number, status: string) =>
+      db.prepare('INSERT INTO inspector_profiles (user_id, license_no, region, total_inspections, status) VALUES (?,?,?,?,?)')
+        .bind(id, `#${id}`, region, total, status).run();
+    await add('i-berat', 'DKI Jakarta', 400, 'verified');
+    await add('i-ringan', 'Bandung', 50, 'verified');
+    await add('i-batal', 'Bali', 1, 'pending'); // belum verified -> tidak boleh dipilih
+
+    expect(await pickInspector(db, 'Surabaya')).toBe('i-ringan');
+    expect(await pickInspector(db)).toBe('i-ringan');
+    // "DKI Jakarta" harus match lokasi "Jakarta Selatan" — cocok per kata
+    expect(await pickInspector(db, 'Jakarta Selatan')).toBe('i-berat');
   });
 
   it('badge hasil baru terlihat seller setelah mobil terjual', async () => {

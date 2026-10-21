@@ -34,6 +34,16 @@ CREATE INDEX IF NOT EXISTS idx_orders_mode ON orders(mode);
 -- dan JOIN ke `users` tidak menemukan id '' sehingga `seller_name` tetap kosong.
 -- Kalau suatu saat perlu NULL sungguhan, bangun ulang `messages` BERSAMAAN dengan
 -- `conversations` dalam satu migrasi.
+-- CATATAN PENTING — jangan tambahkan foreign key ke buyer_id / seller_id.
+--
+-- Thread 'inspection' (pembeli <-> inspektor) dan thread 'sale' (inspektor <-> penjual)
+-- masing-masing TIDAK melibatkan semua pihak. Yang tidak ikut diisi string kosong '',
+-- bukan NULL — karena kedua kolom itu NOT NULL.
+--
+-- Kalau nanti ditambah REFERENCES users(id), string '' tidak lagi ada di tabel users
+-- dan INSERT-nya akan gagal dengan "FOREIGN KEY constraint failed". Pakai '' karena
+-- listConversations mencocokkan `c.seller_id = ?` dengan id user sungguhan, jadi ''
+-- tidak akan pernah cocok dan pihak yang tidak ikut otomatis tidak melihat thread.
 ALTER TABLE conversations ADD COLUMN kind TEXT NOT NULL DEFAULT 'sale';
 
 CREATE INDEX IF NOT EXISTS idx_conversations_order_kind ON conversations(order_id, kind);
