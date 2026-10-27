@@ -297,6 +297,60 @@ export function listInspectionPhotos(db: Db, inspectionId: string) {
     FROM inspection_photos WHERE inspection_id=? ORDER BY rowid`, inspectionId);
 }
 
+/* ------------------------------------------------------------------ *
+ * Media blob (foto lapangan) — disimpan di D1, bukan di filesystem.
+ * Dipakai karena filesystem Cloudflare Pages read-only, jadi file yang
+ * diunggah saat runtime tidak bisa ditulis ke static/.
+ * ------------------------------------------------------------------ */
+
+/** Batas nilai TEXT di D1: 1.000.000 byte. Base64 menambah ~33%. */
+export const MEDIA_MAX_BYTES = 700 * 1024;
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let bin = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    bin += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(bin);
+}
+
+function base64ToBytes(b64: string): Uint8Array<ArrayBuffer> {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+/** Simpan media sebagai blob di D1. Balik URL publik yang bisa langsung dipakai <img>. */
+export async function storeMediaBlob(
+  db: Db,
+  b: { data: ArrayBuffer; contentType: string }
+): Promise<{ id: string; url: string; bytes: number }> {
+  if (b.data.byteLength > MEDIA_MAX_BYTES) {
+    throw Object.assign(new Error('Ukuran foto melebihi batas (maks. 700 KB). Ambil foto dengan resolusi lebih rendah.'), {
+      code: 'VALIDATION_ERROR',
+      status: 400
+    });
+  }
+  const id = uid('MED');
+  const b64 = bytesToBase64(new Uint8Array(b.data));
+  await exec(db, 'INSERT INTO media_blobs (id, content_type, data, bytes) VALUES (?,?,?,?)',
+    id, b.contentType, b64, b.data.byteLength);
+  return { id, url: `/api/media/${id}`, bytes: b.data.byteLength };
+}
+
+/** Ambil lagi media blob untuk disajikan. */
+export function getMediaBlob(db: Db, id: string) {
+  return qOne<{ content_type: string; data: string; bytes: number }>(
+    db, 'SELECT content_type, data, bytes FROM media_blobs WHERE id=?', id);
+}
+
+/** Isi ulang byte dari media blob (base64 -> Uint8Array). */
+export function mediaBytes(row: { data: string }): Uint8Array<ArrayBuffer> {
+  return base64ToBytes(row.data);
+}
+
 /** Laporan lengkap untuk tampilan layar: header + checklist + foto. */
 export async function getReportDetail(db: Db, id: string) {
   const r = await getReport(db, id);
@@ -629,7 +683,7 @@ const SEED_VEHICLES = [
 export async function resetDemo(db: Db, mode: 'full' | 'transaksi') {
   const cleared: string[] = [];
   for (const t of ['messages', 'conversations', 'certificates', 'reports', 'inspection_photos',
-    'inspection_items', 'inspections', 'payments', 'schedules', 'orders', 'notifications', 'reviews', 'user_vouchers']) {
+    'inspection_items', 'inspections', 'media_blobs', 'payments', 'schedules', 'orders', 'notifications', 'reviews', 'user_vouchers']) {
     await exec(db, `DELETE FROM ${t}`);
     cleared.push(t);
   }

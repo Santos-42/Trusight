@@ -36,9 +36,18 @@ export async function readExif(file: File | Blob): Promise<ExifCheck> {
 export async function compressPhoto(file: File, maxMB = 1): Promise<Blob> {
   try {
     const { default: imageCompression } = await import('browser-image-compression');
-    return await imageCompression(file, { maxSizeMB: maxMB, maxWidthOrHeight: 1600, useWebWorker: true });
+    // 1280 (bukan 1600): foto kamera HP 12 MP digambar ke canvas, dan iOS Safari
+    // punya batas memori canvas — dimensi yang lebih kecil jauh lebih aman.
+    return await imageCompression(file, { maxSizeMB: maxMB, maxWidthOrHeight: 1280, useWebWorker: true });
   } catch {
-    // Fallback canvas lokal (tanpa dep) bila worker gagal
-    return canvasCompress(file, maxMB * 1024);
+    // Fallback canvas lokal (tanpa dep) bila worker gagal.
+    try {
+      return await canvasCompress(file, maxMB * 1024);
+    } catch {
+      // Kanvas HP bisa gagal juga (batas memori iOS Safari, HEIC tak ter-decode).
+      // Yang penting file tetap bisa diunggah — JANGAN melempar, karena satu
+      // kegagalan di sini membuat seluruh alur inspections macet.
+      return file;
+    }
   }
 }

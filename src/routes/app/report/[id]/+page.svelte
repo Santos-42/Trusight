@@ -27,15 +27,35 @@
     photos: Photo[];
   };
 
-  $: id = $page.params.id ?? 'REP-3401';
+  // Tanpa fallback ID palsu — REP-3401 tidak pernah ada, dan diam-diam membuka
+  // halaman kosong hanya membingungkan.
+  $: id = $page.params.id ?? '';
   let live: ReportDetail | null = null;
-  /** true kalau laporan tidak ada di database — halaman harus bilang, bukan loading selamanya. */
+  /** Laporan tidak ada di database — halaman harus bilang, bukan loading selamanya. */
   let notFound = false;
+  /** Error lain (server/network) — masih mungkin dicoba ulang. */
+  let loadError = false;
+  let loading = false;
 
-  onMount(async () => {
-    const r = await api.get<ReportDetail>(`/reports/${encodeURIComponent(id)}`);
-    if (r.ok) live = r.data;
-    else notFound = true;
+  async function load() {
+    loading = true;
+    notFound = false;
+    loadError = false;
+    try {
+      const r = await api.get<ReportDetail>(`/reports/${encodeURIComponent(id)}`);
+      if (r.ok) {
+        live = r.data;
+        return;
+      }
+      if (r.error.code === 'NOT_FOUND') notFound = true;
+      else loadError = true;
+    } finally {
+      loading = false;
+    }
+  }
+
+  onMount(() => {
+    void load();
   });
 
   $: vehicle = live?.vehicle ?? 'Memuat kendaraan…';
@@ -107,7 +127,19 @@
       <p class="max-w-xs text-[0.8125rem] text-slate-500">
         Laporan <b>{id}</b> belum ada. Laporan terbit setelah inspeksi selesai dan admin menerbitkannya.
       </p>
-      <a href="/app/history" class="btn-navy mt-1">Kembali ke Riwayat</a>
+      <div class="mt-1 flex flex-wrap justify-center gap-2">
+        <a href="/app/history" class="btn-navy">Kembali ke Riwayat</a>
+        <a href="/app/home" class="btn-outline">Ke Beranda</a>
+      </div>
+    </div>
+  {:else if loadError}
+    <div class="ts-card grid justify-items-center gap-2 p-10 text-center">
+      <AlertTriangle class="size-10 text-amber-400" />
+      <p class="font-bold">Gagal memuat laporan</p>
+      <p class="max-w-xs text-[0.8125rem] text-slate-500">Server tidak merespons. Coba lagi sebentar lagi.</p>
+      <button class="btn-navy mt-1 disabled:opacity-50" disabled={loading} on:click={() => void load()}>
+        {loading ? 'Memuat...' : 'Coba Lagi'}
+      </button>
     </div>
   {:else}
   <div class="grid items-start gap-5 lg:grid-cols-[1fr_320px]">

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Upload } from '@lucide/svelte';
   import { api } from '$lib/api';
-  import { compressImage } from '$lib/upload';
+  import { compressImage, uploadMedia } from '$lib/upload';
   import LicensePreview from '$lib/components/license/LicensePreview.svelte';
   let name='', email='', password='', license_no='', region='DKI Jakarta', err='', ok='';
   let licenseKey = '', licensePreview: string | null = null, licenseNote = '', busy = false;
@@ -21,8 +21,10 @@
         r.onerror = () => reject(new Error('Gagal membaca file'));
         r.readAsDataURL(small);
       });
-      // Alur R2 (POST /uploads/sign) belum aktif — key mock dulu, kontrak sudah siap di $lib/upload.
-      licenseKey = `license/mock-${Date.now()}.jpg`;
+      // Foto lisensi disimpan sebagai blob di D1 — URL-nya yang dipakai sebagai
+      // referensi, sama seperti foto listing & foto lapangan inspeksi.
+      const up = await uploadMedia(new File([small], 'lisensi.jpg', { type: 'image/jpeg' }));
+      licenseKey = up.url;
       licenseNote = `${file.name} • ${(small.size / 1024).toFixed(0)} KB`;
     } catch (e2) {
       licenseNote = e2 instanceof Error ? e2.message : 'Gagal memproses gambar.';

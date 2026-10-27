@@ -1,13 +1,13 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { mockHandle } from '$lib/mockApi';
-import { storeMedia, type MediaPurpose } from '$lib/server/uploads';
 import {
   approveOrder, canRevealLocation, checkin, claimVoucher, createOrder, createVehicle, ensureConversation,
   getMe, getOrder, getReportDetail, getInspectorProfile, listVehicles, listViewingRequests, markVehicleSold, requestViewing, respondToViewing,
   setVehicleCover,
   listConversations, listMessages, listOrders, listReports, listVouchers, postMessage, publishReport,
-  quoteVoucher, resetDemo, submitInspection, uid, type Db
+  quoteVoucher, resetDemo, submitInspection, uid, type Db,
+  getMediaBlob, mediaBytes, storeMediaBlob
 } from '$lib/server/d1';
 
 type Penv = App.Platform['env'];
@@ -248,6 +248,20 @@ async function handleLive(path: string, method: string, body: Record<string, unk
       return ok(r);
     }
 
+    // Foto (disimpan sebagai blob di D1) — dilayani sebagai gambar.
+    if (seg[0] === 'media' && seg[1] && method === 'GET') {
+      const row = await getMediaBlob(DB, seg[1]);
+      if (!row) return err('NOT_FOUND', 'Media tidak ditemukan', 404);
+      const bytes = mediaBytes(row);
+      return new Response(bytes, {
+        headers: {
+          'content-type': row.content_type || 'application/octet-stream',
+          'content-length': String(bytes.byteLength),
+          'cache-control': 'public, max-age=31536000, immutable'
+        }
+      });
+    }
+
     if (seg[0] === 'viewings' && seg[1] === 'incoming' && method === 'GET') {
       const sellerId = query.get('sellerId') ?? '';
       if (!sellerId) return err('VALIDATION_ERROR', 'sellerId wajib diisi');
@@ -380,21 +394,21 @@ async function handleLive(path: string, method: string, body: Record<string, unk
 }
 
 /**
- * POST /api/uploads — simpan file ke folder statis.
- * Multipart, jadi harus ditangani SEBELUM body di-parse sebagai JSON.
+ * POST /api/media — simpan foto sebagai blob di D1.
+ *
+ * Semua foto (listing seller & foto lapangan inspeksi) lewat sini. Di produksi
+ * filesystem Cloudflare Pages read-only, jadi file yang diunggah saat runtime
+ * tidak bisa masuk repo — disimpan di D1 supaya benar-benar bisa dilihat.
  */
-async function handleUpload(request: Request) {
+async function handleMediaUpload(request: Request, penv: Penv) {
+  const DB = penv?.DB as Db | undefined;
+  if (!DB) return err('NOT_FOUND', 'Penyimpanan media belum tersedia', 404);
   try {
     const form = await request.formData();
     const file = form.get('file');
-    const purposeRaw = String(form.get('purpose') ?? 'vehicle');
-    const purpose = (purposeRaw === 'license' || purposeRaw === 'inspection' ? purposeRaw : 'vehicle') as MediaPurpose;
-    const folder = String(form.get('folder') ?? '');
-    const filename = String(form.get('filename') ?? '');
     if (!(file instanceof File) || !file.size) return err('VALIDATION_ERROR', 'file wajib diunggah');
-    if (!folder) return err('VALIDATION_ERROR', 'folder wajib diisi');
-    if (file.size > 5 * 1024 * 1024) return err('VALIDATION_ERROR', 'Ukuran file maksimal 5 MB');
-    return ok(await storeMedia({ file, purpose, folder, filename: filename || undefined }));
+    const buf = await file.arrayBuffer();
+    return ok(await storeMediaBlob(DB, { data: buf, contentType: file.type || 'image/jpeg' }));
   } catch (e) {
     return dbErr(e);
   }
@@ -406,8 +420,8 @@ const handler: RequestHandler = async ({ request, params, platform, url }) => {
   const penv = platform?.env as Penv;
 
   // Multipart harus ditangani sebelum body di-parse sebagai JSON.
-  if (seg[0] === 'uploads' && seg.length === 1 && request.method === 'POST') {
-    return handleUpload(request);
+  if (seg[0] === 'media' && seg.length === 1 && request.method === 'POST') {
+    return handleMediaUpload(request, penv);
   }
 
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;

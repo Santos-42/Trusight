@@ -1,9 +1,12 @@
 /**
  * URL untuk ditampilkan di <img>.
  *
- * Foto disimpan sebagai file statis (static/vehicles/<nama-mobil>/hero.jpg),
- * jadi path-nya langsung dipakai apa adanya. Fungsi ini hanya menjaga agar
- * cover yang kosong tidak jadi <img src="">.
+ * Dua bentuk cover yang sama-sama sah:
+ * - path statis  → `/vehicles/honda-brio-rs-2021/hero.jpg` (file di static/)
+ * - URL media    → `/api/media/MED-abc123` (blob di D1, untuk foto yang diunggah)
+ *
+ * Keduanya sudah berupa URL publik, jadi dipakai apa adanya. Fungsi ini hanya
+ * menjaga agar cover yang kosong tidak jadi <img src="">.
  */
 export function fileUrl(cover: string | null | undefined): string {
   if (!cover) return '';

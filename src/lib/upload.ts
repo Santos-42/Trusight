@@ -1,34 +1,26 @@
 import { API_BASE } from './config';
 
-export interface UploadedFile {
-  /** Path relatif ke static/, mis. vehicles/honda-brio-rs-2021/hero.jpg */
-  path: string;
-  /** URL publik, mis. /vehicles/honda-brio-rs-2021/hero.jpg */
+export interface UploadedMedia {
+  id: string;
+  /** URL publik, mis. /api/media/MED-abc123 */
   url: string;
   bytes: number;
-  contentType: string;
-  /** false kalau file tidak bisa ditulis ke disk (mis. produksi). */
-  saved: boolean;
 }
 
 /**
- * Unggah file ke folder statis.
+ * Unggah foto — disimpan sebagai blob di D1, lalu disajikan lewat /api/media/<id>.
  *
- * Server menaruhnya di `<vehicles|licenses|inspections>/<folder>/<nama file>.<ext>` —
- * jadi foto otomatis masuk ke subfoldernya, di dalam folder static yang sudah ada.
+ * Dipakai untuk foto listing seller maupun foto lapangan inspeksi. Di produksi
+ * filesystem Cloudflare Pages read-only, jadi file yang diunggah saat runtime
+ * tidak bisa ditulis ke static/ — dengan begitu fotonya tetap bisa dilihat
+ * tanpa perlu commit + deploy.
  */
-export async function uploadFile(
-  file: File,
-  opts: { purpose: 'vehicle' | 'license' | 'inspection'; folder: string; filename?: string }
-): Promise<UploadedFile> {
+export async function uploadMedia(file: File): Promise<UploadedMedia> {
   const fd = new FormData();
   fd.append('file', file, file.name);
-  fd.append('purpose', opts.purpose);
-  fd.append('folder', opts.folder);
-  if (opts.filename) fd.append('filename', opts.filename);
-  const r = await fetch(`${API_BASE}/uploads`, { method: 'POST', body: fd });
+  const r = await fetch(`${API_BASE}/media`, { method: 'POST', body: fd });
   const j = (await r.json().catch(() => null)) as
-    | { ok: true; data: UploadedFile }
+    | { ok: true; data: UploadedMedia }
     | { ok: false; error: { message: string } }
     | null;
   if (!j?.ok) throw new Error(j?.error?.message ?? 'Upload gagal');

@@ -6,7 +6,7 @@
   import { loadCatalog, type CatalogVehicle } from '$lib/catalog';
   import { certificationBadge, type MockVehicle } from '$lib/mocks';
   import { fileUrl } from '$lib/files';
-  import { compressImage, uploadFile } from '$lib/upload';
+  import { compressImage, uploadMedia } from '$lib/upload';
   import { rupiah } from '$lib/format';
   let msg = '';
   // Permintaan "mau lihat mobil" — dari order RAHASIA. Datang tanpa konteks
@@ -85,19 +85,14 @@
       return;
     }
 
-    // Foto disimpan ke static/vehicles/<nama-mobil>/hero.<ext> — folder statis yang
-    // sudah ada, cuma dibuat subfolder baru bernama mobilnya.
+    // Foto disimpan sebagai blob di D1 — langsung tayang, tanpa perlu commit.
     if (photoFile) {
       try {
-        const small = await compressImage(photoFile, 700);
-        const up = await uploadFile(new File([small], 'hero.jpg', { type: 'image/jpeg' }), {
-          purpose: 'vehicle',
-          folder: r.data.id
-        });
+        // 600 KB supaya base64-nya muat di nilai TEXT D1 (batas 1 MB per nilai).
+        const small = await compressImage(photoFile, 600);
+        const up = await uploadMedia(new File([small], 'hero.jpg', { type: 'image/jpeg' }));
         await api.post(`/vehicles/${r.data.id}/cover`, { cover: up.url });
-        photoMsg = up.saved
-          ? `Foto tersimpan di static/${up.path} — commit file ini agar ikut tayang saat deploy.`
-          : `Di produksi file tidak bisa disimpan otomatis. Simpan manual ke static/${up.path} lalu commit.`;
+        photoMsg = `Foto tersimpan dan langsung tayang (${(small.size / 1024).toFixed(0)} KB).`;
       } catch (e2) {
         formErr = e2 instanceof Error ? `Foto gagal diunggah: ${e2.message}` : 'Foto gagal diunggah.';
         saving = false;

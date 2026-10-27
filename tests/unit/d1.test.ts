@@ -4,6 +4,7 @@ import {
   approveOrder, canRevealLocation, checkin, claimVoucher, createInspectionThread, createOrder, createVehicle, ensureConversation, getOrder, getReport,
   getReportDetail, isOrderPaid, listVehicles, listViewingRequests, markVehicleSold, pickInspector, requestViewing, respondToViewing,
   listConversations, listInspectionItems, listMessages, listOrders, listVouchers, postMessage, publishReport, quoteVoucher,
+  getMediaBlob, mediaBytes, storeMediaBlob, MEDIA_MAX_BYTES,
   resetDemo, submitInspection
 } from '$lib/server/d1';
 import { certificationBadge, type MockVehicle } from '$lib/mocks';
@@ -426,5 +427,40 @@ describe('privasi lokasi: detail hanya untuk pembeli/inspektor setelah bayar', (
     expect(await canRevealLocation(db, o.orderId, 'u-hendra')).toBe(false);
     // orang lain juga ditolak
     expect(await canRevealLocation(db, o.orderId, 'u-orang-lain')).toBe(false);
+  });
+});
+
+describe('media blob (foto lapangan di D1)', () => {
+  it('simpan di D1 lalu ambil kembali — byte identik', async () => {
+    const db = memDb(SEED);
+    const asli = 'halo-dunia-ini-foto-lapangan';
+    const bytes = new TextEncoder().encode(asli);
+    const stored = await storeMediaBlob(db, {
+      data: bytes.buffer as ArrayBuffer,
+      contentType: 'image/jpeg'
+    });
+    expect(stored.url).toBe(`/api/media/${stored.id}`);
+    expect(stored.bytes).toBe(bytes.byteLength);
+
+    const row = await getMediaBlob(db, stored.id);
+    expect(row?.content_type).toBe('image/jpeg');
+    expect(new TextDecoder().decode(mediaBytes(row!))).toBe(asli);
+  });
+
+  it('file melebihi batas ditolak', async () => {
+    const db = memDb(SEED);
+    const besar = new Uint8Array(MEDIA_MAX_BYTES + 1);
+    await expect(
+      storeMediaBlob(db, { data: besar.buffer as ArrayBuffer, contentType: 'image/jpeg' })
+    ).rejects.toThrow(/batas/i);
+  });
+
+  it('reset demo ikut mengosongkan media_blobs', async () => {
+    const db = memDb(SEED);
+    const bytes = new TextEncoder().encode('x');
+    const stored = await storeMediaBlob(db, { data: bytes.buffer as ArrayBuffer, contentType: 'image/jpeg' });
+    expect(await getMediaBlob(db, stored.id)).toBeTruthy();
+    await resetDemo(db, 'transaksi');
+    expect(await getMediaBlob(db, stored.id)).toBeFalsy();
   });
 });
