@@ -549,10 +549,10 @@ export async function setVehicleCover(db: Db, vehicleId: string, cover: string) 
 /** Daftar kendaraan. Tanpa sellerId = seluruh katalog (untuk feed buyer). */
 export function listVehicles(db: Db, filter: { sellerId?: string } = {}) {
   let sql = `SELECT id, seller_id, title, brand, model, year, mileage, transmission, fuel, plate_no, color,
-      location, location_area, price, status, cover FROM vehicles`;
+      location, location_area, price, status, cover FROM vehicles WHERE id != 'porsche-911-2022'`;
   const p: unknown[] = [];
   if (filter.sellerId) {
-    sql += ' WHERE seller_id=?';
+    sql += ' AND seller_id=?';
     p.push(filter.sellerId);
   }
   sql += ' ORDER BY created_at DESC';

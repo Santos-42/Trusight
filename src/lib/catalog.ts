@@ -28,7 +28,7 @@ type DbVehicle = {
  */
 export async function loadCatalog(sellerId?: string): Promise<CatalogVehicle[]> {
   const r = await api.get<DbVehicle[]>('/vehicles');
-  const fromDb = r.ok ? r.data : [];
+  const fromDb = (r.ok ? r.data : []).filter((v) => v.id !== 'porsche-911-2022');
   const byId = new Map(fromDb.map((v) => [v.id, v]));
   const owns = (v: DbVehicle | undefined) => !sellerId || v?.seller_id === sellerId;
 
