@@ -9,7 +9,7 @@
   import { bumpThread, loadMsgs, saveMsgs } from '$lib/chatStore';
   $: id = $page.params.id ?? '1';
   const peers: Record<string, { n: string; s: string }> = {
-    '1': { n: 'Firman Comstir', s: 'EXPERT VERIFIER' },
+    '1': { n: 'Budi Perkasa', s: 'PEMBELI • HONDA CIVIC TURBO 2021' },
     '2': { n: 'Rian F.', s: 'PEMBELI • CIVIC TURBO 2021' }
   };
   const defaults: Record<string, ChatMsg[]> = {
@@ -21,12 +21,31 @@
     ],
     '2': [{ me: false, text: 'Baik pak, saya tunggu di lokasi jam 2 siang ya.', time: '10:30' }]
   };
-  $: peer = peers[id] ?? peers['1'];
+  let peer = peers[id] ?? peers['1'];
   // Riwayat selalu persist lokal — tidak hilang walau keluar obrolan
   let msgs: ChatMsg[] = loadMsgs(`insp-${id}`, defaults[id] ?? defaults['1']);
   let live = false;
   onMount(async () => {
     const uid = getSession()?.id;
+
+    // Ambil detail percakapan live
+    try {
+      const conv = await api.get<{
+        id: string; kind?: string; buyer_name?: string; seller_name?: string; vehicle_title?: string;
+      }>(`/conversations/${encodeURIComponent(id)}`);
+      if (conv.ok && conv.data) {
+        const c = conv.data;
+        const vTitle = c.vehicle_title ? c.vehicle_title.toUpperCase() : 'CIVIC TURBO 2021';
+        if (c.kind === 'inspection') {
+          peer = { n: c.buyer_name || 'Budi Perkasa', s: `PEMBELI • ${vTitle}` };
+        } else {
+          peer = { n: c.seller_name || 'Hendra Wijaya', s: `PENJUAL • ${vTitle}` };
+        }
+      }
+    } catch {
+      // Abaikan
+    }
+
     if (!uid) return;
     const r = await api.get<{ sender_id: string; body: string; created_at: string }[]>(
       `/messages?conversationId=${encodeURIComponent(id)}`);

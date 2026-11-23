@@ -9,25 +9,52 @@
   import { getSession, requireAuth } from '$lib/guest';
   $: id = $page.params.id ?? '1';
   $: isSeed = id === '1';
-  const seedMsgs: ChatMsg[] = [{ me: false, text: 'Baik pak, saya tunggu di lokasi jam 2 siang ya.', time: '10:30' }];
+  const seedMsgs: ChatMsg[] = [{ me: false, text: 'Baik pak, saya inspektor yang bertugas. Saya tunggu di lokasi jam 2 siang ya.', time: '10:30' }];
   let msgs: ChatMsg[] = isSeed ? loadMsgs('buyer-1', seedMsgs) : [];
   let loading = !isSeed;
-  let peer = 'Hendra Wijaya';
-  let peerSub = 'PENJUAL • CIVIC TURBO 2021';
+  let peer = isSeed ? 'Firman Comstir' : 'Memuat…';
+  let peerSub = isSeed ? 'INSPEKTUR • HONDA CIVIC TURBO 2021' : 'TRUSIGHT CHAT';
+
+  type ConvInfo = {
+    id: string;
+    kind?: string;
+    buyer_name?: string;
+    seller_name?: string;
+    inspector_name?: string;
+    vehicle_title?: string;
+  };
+
+  function applyParticipant(c: ConvInfo) {
+    const vTitle = c.vehicle_title ? c.vehicle_title.toUpperCase() : 'HONDA CIVIC TURBO 2021';
+    if (c.kind === 'inspection') {
+      peer = c.inspector_name || 'Firman Comstir';
+      peerSub = `INSPEKTUR • ${vTitle}`;
+    } else {
+      peer = c.seller_name || 'Hendra Wijaya';
+      peerSub = `PENJUAL • ${vTitle}`;
+    }
+  }
+
   onMount(async () => {
     if (isSeed) return;
     const uid = getSession()?.id;
-    // Nama lawan bicara dari conversation bila tersedia
-    if (uid) {
-      const c = await api.get<{ id: string; seller_id: string }[]>(`/conversations?userId=${encodeURIComponent(uid)}`);
-      if (c.ok) {
-        const mine = c.data.find((x) => x.id === id);
-        if (mine?.seller_id) {
-          const u = await api.get<{ name: string }>(`/users/${encodeURIComponent(mine.seller_id)}`);
-          if (u.ok && u.data?.name) peer = u.data.name;
+
+    // Ambil detail percakapan aktif berdasarkan id
+    try {
+      const single = await api.get<ConvInfo>(`/conversations/${encodeURIComponent(id)}`);
+      if (single.ok && single.data) {
+        applyParticipant(single.data);
+      } else if (uid) {
+        const list = await api.get<ConvInfo[]>(`/conversations?userId=${encodeURIComponent(uid)}`);
+        if (list.ok && list.data) {
+          const match = list.data.find((x) => x.id === id);
+          if (match) applyParticipant(match);
         }
       }
+    } catch {
+      // Abaikan bila offline
     }
+
     const r = await api.get<{ sender_id: string; body: string; created_at: string }[]>(
       `/messages?conversationId=${encodeURIComponent(id)}`);
     loading = false;

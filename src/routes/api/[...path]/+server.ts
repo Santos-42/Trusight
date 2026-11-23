@@ -4,7 +4,7 @@ import { mockHandle } from '$lib/mockApi';
 import {
   approveOrder, canRevealLocation, checkin, claimVoucher, createOrder, createVehicle, ensureConversation,
   getMe, getOrder, getReportDetail, getInspectorProfile, listVehicles, listViewingRequests, markVehicleSold, requestViewing, respondToViewing,
-  setVehicleCover,
+  setVehicleCover, getConversation,
   listConversations, listMessages, listOrders, listReports, listVouchers, postMessage, publishReport,
   quoteVoucher, resetDemo, submitInspection, uid, type Db,
   getMediaBlob, mediaBytes, storeMediaBlob
@@ -291,10 +291,15 @@ async function handleLive(path: string, method: string, body: Record<string, unk
       if (k === 'sale' && !safeSeller) return err('VALIDATION_ERROR', 'sellerId wajib untuk thread jual-beli');
       return ok(await ensureConversation(DB, { orderId, buyerId, sellerId: safeSeller, inspectorId, kind: k }));
     }
-    if (seg[0] === 'conversations' && method === 'GET') {
+    if (seg[0] === 'conversations' && seg.length === 1 && method === 'GET') {
       const userId = query.get('userId') ?? '';
       if (!userId) return err('VALIDATION_ERROR', 'userId wajib diisi');
       return ok(await listConversations(DB, userId));
+    }
+    if (seg[0] === 'conversations' && seg[1] && method === 'GET') {
+      const conv = await getConversation(DB, seg[1]);
+      if (!conv) return err('NOT_FOUND', 'Percakapan tidak ditemukan', 404);
+      return ok(conv);
     }
     if (seg[0] === 'messages' && method === 'GET') {
       const conversationId = query.get('conversationId') ?? '';

@@ -11,18 +11,24 @@
   let msgs: ChatMsg[] = loadMsgs(`seller-${id}`, []);
   let loading = true;
   let peer = 'Calon Pembeli';
+  let peerSub = 'CALON PEMBELI';
   onMount(async () => {
     const uid = getSession()?.id;
-    if (uid) {
-      const c = await api.get<{ id: string; buyer_id: string }[]>(`/conversations?userId=${encodeURIComponent(uid)}`);
-      if (c.ok) {
-        const mine = c.data.find((x) => x.id === id);
-        if (mine?.buyer_id) {
-          const u = await api.get<{ name: string }>(`/users/${encodeURIComponent(mine.buyer_id)}`);
-          if (u.ok && u.data?.name) peer = u.data.name;
-        }
+    // Detail percakapan live
+    try {
+      const conv = await api.get<{
+        id: string; kind?: string; buyer_name?: string; vehicle_title?: string;
+      }>(`/conversations/${encodeURIComponent(id)}`);
+      if (conv.ok && conv.data) {
+        const c = conv.data;
+        const vTitle = c.vehicle_title ? c.vehicle_title.toUpperCase() : '';
+        peer = c.buyer_name || 'Calon Pembeli';
+        peerSub = vTitle ? `CALON PEMBELI • ${vTitle}` : 'CALON PEMBELI';
       }
+    } catch {
+      // Abaikan
     }
+
     const r = await api.get<{ sender_id: string; body: string; created_at: string }[]>(
       `/messages?conversationId=${encodeURIComponent(id)}`);
     loading = false;
@@ -63,7 +69,7 @@
         <CircleUserRound class="size-10 shrink-0 text-slate-300" />
         <div class="min-w-0">
           <p class="truncate font-bold">{peer}</p>
-          <p class="text-[0.6875rem] tracking-wide text-slate-400">CALON PEMBELI</p>
+          <p class="text-[0.6875rem] tracking-wide text-slate-400">{peerSub}</p>
         </div>
       </div>
     </ChatThread>

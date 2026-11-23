@@ -12,14 +12,21 @@
     { id: '1', name: 'Adi Bengkel', snippet: "I've uploaded the paint thickness re… • 1H AGO", with: ['a'] },
     { id: '1', name: 'TruSight Support', snippet: 'Your verification request #TS-9822 … • 3H AGO', with: ['a'] }
   ];
-  let threads: Thread[] = seed;
+  let threads: Thread[] = [];
+  let loading = true;
   onMount(async () => {
+    loading = true;
     const uid = getSession()?.id;
-    if (!uid) return;
+    if (!uid) {
+      threads = seed;
+      loading = false;
+      return;
+    }
     const r = await api.get<{
       id: string; order_id: string; last_msg?: string; kind?: string;
       seller_name?: string | null; inspector_name?: string | null;
     }[]>(`/conversations?userId=${encodeURIComponent(uid)}`);
+    loading = false;
     if (r.ok && r.data.length) {
       const mapped: Thread[] = r.data.map((c) => {
         // kind 'inspection' = pembeli <-> inspektor (tab B)
@@ -37,6 +44,8 @@
         };
       });
       threads = sortThreads(mapped);
+    } else if (r.ok) {
+      threads = [];
     }
   });
 </script>

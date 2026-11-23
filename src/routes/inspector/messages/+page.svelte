@@ -11,14 +11,21 @@
     { id: '1', name: 'Firman Comstir', snippet: 'The RMS is bone dry… • 10:47 AM', with: ['a'] },
     { id: '2', name: 'Rian F.', snippet: 'Baik pak, saya tunggu… • 10:30', with: ['a'] }
   ];
-  let threads: Thread[] = seed;
+  let threads: Thread[] = [];
+  let loading = true;
   onMount(async () => {
+    loading = true;
     const uid = getSession()?.id;
-    if (!uid) return;
+    if (!uid) {
+      threads = seed;
+      loading = false;
+      return;
+    }
     const r = await api.get<{
       id: string; order_id: string; last_msg?: string; kind?: string;
       buyer_name?: string | null; seller_name?: string | null;
     }[]>(`/conversations?userId=${encodeURIComponent(uid)}`);
+    loading = false;
     if (r.ok && r.data.length) {
       const mapped: Thread[] = r.data.map((c) => {
         // kind 'inspection' = dengan PEMBELI (tab Pembeli) — soal inspeksi, ikut datang
@@ -35,6 +42,8 @@
         };
       });
       threads = sortThreads(mapped);
+    } else if (r.ok) {
+      threads = [];
     }
   });
 </script>
