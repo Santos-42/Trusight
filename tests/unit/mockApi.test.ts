@@ -37,12 +37,12 @@ describe('mockApi (fallback vite dev)', () => {
     if (r.ok) expect((r.data as { user: { role: string } }).user.role).toBe('buyer');
   });
 
-  it('buat order fast-track total 499000', () => {
+  it('buat order fast-track total 650000', () => {
     const r = mockHandle('/orders', 'POST', { vehicleId: 'civic-2021', type: 'fast-track' });
     expect(r.ok).toBe(true);
     if (r.ok) {
       const d = r.data as { orderId: string; total: number };
-      expect(d.total).toBe(499000);
+      expect(d.total).toBe(650000);
       expect(d.orderId).toMatch(/^TS-/);
     }
   });

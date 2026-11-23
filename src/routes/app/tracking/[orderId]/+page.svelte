@@ -8,7 +8,7 @@
   <h1 class="text-xl font-extrabold lg:col-span-2">LIVE VERIFICATION • {orderId}</h1>
   <div class="rounded-2xl border bg-white p-5">
     <p class="flex items-center gap-2 font-bold text-sm"><CircleUserRound class="size-8 shrink-0 text-slate-300" /> Firman Comstir • SENIOR TECHNICAL AUDITOR • 4.9 (242)</p>
-    <p class="text-xs text-slate-500">Expert in German high-performance diagnostics. Certified ADAC & Porsche Classic.</p>
+    <p class="text-xs text-slate-500">Expert in multi-brand clinical diagnostics. Certified SAE & IMI Inspector.</p>
     <div class="mt-3 h-2 rounded-full bg-slate-100 overflow-hidden"><div class="h-full w-2/3 bg-brand-600"></div></div>
     <p class="mt-2 text-xs">Body & Chassis Structural Audit • VERIFIED • Engine Diagnostics • IN PROGRESS</p>
   </div>

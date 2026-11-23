@@ -23,7 +23,7 @@ export function uid(prefix: string): string {
 }
 const num5 = () => Math.floor(10000 + Math.random() * 89999);
 
-export const PRICING: Record<string, number> = { standard: 299000, 'fast-track': 499000 };
+export const PRICING: Record<string, number> = { standard: 350000, 'fast-track': 650000 };
 
 /** Mode order.
  *  - `covert`        : inspeksi mobil yang sedang dijual. Seller tidak boleh tahu.
@@ -663,7 +663,6 @@ const SEED_USERS = [
  *  plate_no, color, location (detail), location_area (publik), price, status. */
 const SEED_VEHICLES = [
   ['civic-2021', 'u-hendra', 'Honda Civic Turbo 2021', 'Honda', 'Civic Turbo', 2021, 45000, 'Matic', 'Bensin', 'B 1234 SG', 'Hitam', 'Kalibata, Jakarta Selatan', 'Jakarta Selatan', 385000000, 'listed'],
-  ['porsche-911-2022', 'u-hendra', 'Porsche 911 Carrera S 2022', 'Porsche', '911 Carrera S', 2022, 12400, 'Manual', 'Bensin', 'B 992 TS', 'Putih', 'Pantai Indah Kapuk, Jakarta Utara', 'Jakarta Utara', 4750000000, 'certified'],
   ['avanza-2022', 'u-hendra', 'Toyota Avanza Veloz 2022', 'Toyota', 'Avanza Veloz', 2022, 32000, 'Matic', 'Bensin', 'B 2211 AV', 'Silver', 'Tebet, Jakarta Selatan', 'Jakarta Selatan', 235000000, 'listed'],
   ['innova-2020', 'u-hendra', 'Toyota Kijang Innova Venturer 2020', 'Toyota', 'Kijang Innova Venturer', 2020, 68000, 'Matic', 'Diesel', 'B 1010 IN', 'Hitam', 'Bintaro, Tangerang Selatan', 'Tangerang Selatan', 335000000, 'certified'],
   ['xpander-2021', 'u-hendra', 'Mitsubishi Xpander Ultimate 2021', 'Mitsubishi', 'Xpander Ultimate', 2021, 41000, 'Matic', 'Bensin', 'B 3030 XP', 'Abu-abu', 'Bekasi Timur, Kota Bekasi', 'Kota Bekasi', 268000000, 'listed'],

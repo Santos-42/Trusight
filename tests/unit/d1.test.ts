@@ -31,7 +31,7 @@ describe('alur order lintas role', () => {
   it('buyer buat (purna-beli) → seller lihat incoming → inspector lihat assigned → approve', async () => {
     const db = memDb(SEED);
     const o = await createOrder(db, { vehicleId: 'civic-2021', type: 'fast-track', buyerId: 'u-budi', mode: 'post-purchase' });
-    expect(o.total).toBe(499000);
+    expect(o.total).toBe(650000);
     expect(o.mode).toBe('post-purchase');
 
     const mine = await listOrders(db, { buyerId: 'u-budi' });
@@ -110,11 +110,11 @@ describe('voucher DB', () => {
     expect(c.code).toBe('TRU20');
     const dup = await claimVoucher(db, 'u-budi', 'TRU20');
     expect(dup.already).toBe(true);
-    const q = await quoteVoucher(db, 'u-budi', 'TRU20', 299000);
-    expect(q.discount).toBe(59800);
-    expect(q.total).toBe(239200);
-    await expect(quoteVoucher(db, 'u-budi', 'FASTTRACK', 299000)).rejects.toThrow('tidak berlaku');
-    await expect(quoteVoucher(db, 'u-budi', 'HEMAT50', 299000)).rejects.toThrow('belum diklaim');
+    const q = await quoteVoucher(db, 'u-budi', 'TRU20', 350000);
+    expect(q.discount).toBe(70000);
+    expect(q.total).toBe(280000);
+    await expect(quoteVoucher(db, 'u-budi', 'FASTTRACK', 350000)).rejects.toThrow('tidak berlaku');
+    await expect(quoteVoucher(db, 'u-budi', 'HEMAT50', 350000)).rejects.toThrow('belum diklaim');
     const mine = await listVouchers(db, 'u-budi');
     expect(mine.map((m) => m.code)).toEqual(['TRU20']);
   });
@@ -387,7 +387,7 @@ describe('inspeksi rahasia (mode covert)', () => {
 describe('privasi lokasi: detail hanya untuk pembeli/inspektor setelah bayar', () => {
   const paid = async (db: ReturnType<typeof memDb>, orderId: string) => {
     await db.prepare("INSERT INTO payments (id, order_id, provider, amount, method, status) VALUES (?,?,?,?,?,?)")
-      .bind(`PAY-${orderId}`, orderId, 'mock', 299000, 'QRIS', 'paid').run();
+      .bind(`PAY-${orderId}`, orderId, 'mock', 350000, 'QRIS', 'paid').run();
   };
 
   it('listOrders tidak pernah mengirim lokasi detail — termasuk ke seller', async () => {

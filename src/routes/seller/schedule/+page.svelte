@@ -10,9 +10,9 @@
     created_at?: string; slot?: string; inspector?: string;
   };
   const seedRows: Row[] = [
-    { id: 'TS-53621', vehicle: 'Porsche 911 Carrera S 2022', buyer: 'Budi Perkasa', type: 'fast-track', status: 'pending', total: 499000, created_at: '2026-06-04' },
-    { id: 'TS-69229', vehicle: 'Honda Civic Turbo 2021', buyer: 'Budi Perkasa', type: 'standard', status: 'pending', total: 299000, created_at: '2026-06-03' },
-    { id: 'TS-61200', vehicle: 'Toyota Fortuner VRZ 2020', buyer: 'Rian F.', type: 'standard', status: 'scheduled', total: 299000, created_at: '2026-06-01', slot: 'Kamis, 4 Juni • 14:00 WIB', inspector: 'Budi Santoso' }
+    { id: 'TS-53621', vehicle: 'Toyota Kijang Innova Venturer 2020', buyer: 'Budi Perkasa', type: 'fast-track', status: 'pending', total: 650000, created_at: '2026-06-04' },
+    { id: 'TS-69229', vehicle: 'Honda Civic Turbo 2021', buyer: 'Budi Perkasa', type: 'standard', status: 'pending', total: 350000, created_at: '2026-06-03' },
+    { id: 'TS-61200', vehicle: 'Toyota Fortuner VRZ 2020', buyer: 'Rian F.', type: 'standard', status: 'scheduled', total: 350000, created_at: '2026-06-01', slot: 'Kamis, 4 Juni • 14:00 WIB', inspector: 'Budi Santoso' }
   ];
   let rows: Row[] = [];
   // Permintaan "lihat mobil" dari calon pembeli (order rahasia). Terpisah dari

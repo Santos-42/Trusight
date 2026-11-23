@@ -9,7 +9,7 @@
   const recent = [
     { id: '#TS-9021', car: 'Civic Turbo 2021', cust: 'Rian F', insp: 'Budi Santoso', st: 'Verified' },
     { id: '#TS-9022', car: 'Avanza Veloz 2022', cust: 'Anita Putri', insp: 'Firman Comstir', st: 'In Progress' },
-    { id: '#TS-9023', car: 'Porsche 911 Carrera S', cust: 'Farhan Adi', insp: 'Unassigned', st: 'Pending' }
+    { id: '#TS-9023', car: 'Toyota Fortuner VRZ', cust: 'Farhan Adi', insp: 'Unassigned', st: 'Pending' }
   ];
   const avail = [
     { n: 'Budi Santoso', s: 'On-duty', c: 'Civic 2021', ini: 'BS' },

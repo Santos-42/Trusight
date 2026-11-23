@@ -99,12 +99,30 @@
 
   let msg = '';
   async function downloadPdf() {
-    msg = 'Membuat PDF (pdf-lib, OSS)...';
-    const blob = await buildReportPdf({ reportId: id, vehicle, score, grade, inspector, date: prettyDate(verifiedAt) });
+    msg = 'Membuat PDF...';
+    const blob = await buildReportPdf({
+      reportId: id,
+      vehicle,
+      score,
+      grade,
+      inspector,
+      date: prettyDate(verifiedAt),
+      recommendation: recoLabel(recommendation),
+      repairEstimate: repairEstimate ? rupiah(repairEstimate) : undefined,
+      guaranteeUntil: guaranteeUntil ? prettyDate(guaranteeUntil) : undefined,
+      summary: live?.summary ?? undefined,
+      items: items.map((it) => ({
+        category: categoryLabel(it.category),
+        label: it.item_label || it.item_key,
+        condition: it.condition || 'Normal',
+        note: it.note ?? undefined
+      }))
+    });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `${id}.pdf`;
     a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
     msg = 'PDF terunduh.';
   }
   async function share() {
@@ -244,7 +262,7 @@
       {/if}
 
       {#if msg}<p class="text-sm">{msg}</p>{/if}
-      <button class="btn-teal w-full" on:click={downloadPdf}>Download PDF (OSS)</button>
+      <button class="btn-teal w-full" on:click={downloadPdf}>Download PDF</button>
       <a href={`/app/warranty/${id}`} class="btn-outline w-full">Garansi & Komplain</a>
     </aside>
   </div>

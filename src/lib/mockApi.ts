@@ -4,7 +4,7 @@ type Body = Record<string, unknown>;
 const ok = <T>(data: T): ApiRes<T> => ({ ok: true, data });
 const err = (code: string, message: string): ApiRes<never> => ({ ok: false, error: { code, message } });
 
-const PRICING: Record<string, number> = { standard: 299000, 'fast-track': 499000 };
+const PRICING: Record<string, number> = { standard: 350000, 'fast-track': 650000 };
 
 // Pesanan aktif dev: key "buyerId|vehicleId" -> orderId (Opsi A: tolak duplikat)
 const activeOrders = new Map<string, string>();
@@ -74,7 +74,7 @@ export function mockHandle(path: string, method: string, body: Body): ApiRes<unk
   }
   if (seg[0] === 'orders' && seg[2] === 'pay') {
     for (const [k, id] of activeOrders) if (id === seg[1]) activeOrders.delete(k);
-    let amount = 499000, discount = 0, voucher: string | null = null;
+    let amount = 650000, discount = 0, voucher: string | null = null;
     const c = String(body.voucherCode ?? '').toUpperCase();
     if (c === 'TRU20') { discount = Math.round(amount * 0.2); amount -= discount; voucher = c; }
     if (c === 'HEMAT50') { discount = Math.min(50000, amount); amount -= discount; voucher = c; }

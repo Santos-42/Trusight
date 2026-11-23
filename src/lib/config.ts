@@ -3,8 +3,8 @@ export const API_BASE = '/api';
 export const PAYMENT_MODE = 'sandbox';
 
 export const PRICING = {
-  standard: 299000,
-  'fast-track': 499000
+  standard: 350000,
+  'fast-track': 650000
 } as const;
 
 export const ALLOWED_CITIES = ['Jakarta', 'Bogor', 'Depok', 'Tangerang', 'Bekasi'];

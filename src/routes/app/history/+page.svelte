@@ -10,7 +10,7 @@
   // akan membuka halaman kosong, dan dua kartu yang menunjuk ke ID yang sama
   // membuat keduanya membuka laporan yang sama.
   const seed: Item[] = [
-    { id:'#TS-98211', title:'Porsche 911 Carrera S', status:'IN PROGRESS', date:'Oct 24', note:'ENGINE DIAGNOSTICS' },
+    { id:'#TS-98211', title:'Honda Civic Turbo 2021', status:'IN PROGRESS', date:'Oct 24', note:'ENGINE DIAGNOSTICS' },
     { id:'#TS-77642', title:'BMW M4 Competition', status:'DONE', date:'Oct 12', note:'142 POINTS VERIFIED' }
   ];
   let items: Item[] = [];

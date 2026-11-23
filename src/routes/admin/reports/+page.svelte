@@ -1,51 +1,112 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { api } from '$lib/api';
-  import { buildReportPdf } from '$lib/reportPdf';
+  import { onMount } from "svelte";
+  import { api } from "$lib/api";
+  import { buildReportPdf } from "$lib/reportPdf";
+  import { gradeFromScore, recoFromScore, recoLabel } from "$lib/format";
   const stats = [
-    { k: 'Published Reports', v: '1.105', d: 'Live', dc: 'pill-green' },
-    { k: 'Pending Reviews', v: '12', d: 'Audit Required', dc: 'pill-amber' },
-    { k: 'Avg Inspection Score', v: '88.4%', d: 'Clinical Standard', dc: 'pill-blue' }
+    { k: "Published Reports", v: "1.105", d: "Live", dc: "pill-green" },
+    { k: "Pending Reviews", v: "12", d: "Audit Required", dc: "pill-amber" },
+    {
+      k: "Avg Inspection Score",
+      v: "88.4%",
+      d: "Clinical Standard",
+      dc: "pill-blue",
+    },
   ];
-  type Row = { id: string; car: string; insp: string; score: number; st: string; date: string; orderId?: string; inspectorId?: string };
+  type Row = {
+    id: string;
+    car: string;
+    insp: string;
+    score: number;
+    st: string;
+    date: string;
+    orderId?: string;
+    inspectorId?: string;
+  };
   const seed: Row[] = [
-    { id: '#REP-3401', car: 'Porsche 911 Carrera S', insp: 'Budi Santoso', score: 94, st: 'Published', date: '03 Jun 2026' },
-    { id: '#REP-3402', car: 'Civic Turbo 2021', insp: 'Firman Comstir', score: 85, st: 'Pending Review', date: '03 Jun 2026' },
-    { id: '#REP-3403', car: 'Avanza Veloz 2022', insp: 'Budi Santoso', score: 76, st: 'Draft', date: '02 Jun 2026' }
+    {
+      id: "#REP-3401",
+      car: "Toyota Alphard SC 2019",
+      insp: "Budi Santoso",
+      score: 94,
+      st: "Published",
+      date: "03 Jun 2026",
+    },
+    {
+      id: "#REP-3402",
+      car: "Civic Turbo 2021",
+      insp: "Firman Comstir",
+      score: 85,
+      st: "Pending Review",
+      date: "03 Jun 2026",
+    },
+    {
+      id: "#REP-3403",
+      car: "Avanza Veloz 2022",
+      insp: "Budi Santoso",
+      score: 76,
+      st: "Draft",
+      date: "02 Jun 2026",
+    },
   ];
   let rows: Row[] = seed;
   onMount(async () => {
-    const r = await api.get<Record<string, string | number>[]>('/reports');
+    const r = await api.get<Record<string, string | number>[]>("/reports");
     if (r.ok && r.data.length) {
       rows = r.data.map((x) => ({
-        id: `#${x.id}`, car: String(x.vehicle ?? ''), insp: String(x.inspector ?? ''),
-        score: Number(x.score_snapshot ?? 0), st: Number(x.published) ? 'Published' : 'Pending Review',
-        date: String(x.created_at ?? '').slice(0, 10),
-        orderId: String(x.order_id ?? ''), inspectorId: String(x.inspector_id ?? '')
+        id: `#${x.id}`,
+        car: String(x.vehicle ?? ""),
+        insp: String(x.inspector ?? ""),
+        score: Number(x.score_snapshot ?? 0),
+        st: Number(x.published) ? "Published" : "Pending Review",
+        date: String(x.created_at ?? "").slice(0, 10),
+        orderId: String(x.order_id ?? ""),
+        inspectorId: String(x.inspector_id ?? ""),
       }));
     }
   });
   let editing: string | null = null;
   let editScore = 0;
-  let msg = '';
-  const stPill = (s: string) => s === 'Published' ? 'pill-green' : s === 'Pending Review' ? 'pill-amber' : 'pill';
-  const scoreCls = (s: number) => s >= 90 ? 'text-emerald-600' : s >= 80 ? 'text-brand-600' : 'text-amber-600';
+  let msg = "";
+  const stPill = (s: string) =>
+    s === "Published"
+      ? "pill-green"
+      : s === "Pending Review"
+        ? "pill-amber"
+        : "pill";
+  const scoreCls = (s: number) =>
+    s >= 90
+      ? "text-emerald-600"
+      : s >= 80
+        ? "text-brand-600"
+        : "text-amber-600";
   async function review(id: string) {
-    const r = await api.post(`/reports/${encodeURIComponent(id.replace('#', ''))}/publish`, {});
+    const r = await api.post(
+      `/reports/${encodeURIComponent(id.replace("#", ""))}/publish`,
+      {},
+    );
     if (r.ok) {
-      rows = rows.map((x) => (x.id === id ? { ...x, st: 'Published' } : x));
+      rows = rows.map((x) => (x.id === id ? { ...x, st: "Published" } : x));
       msg = `${id} dipublish.`;
     } else {
-      rows = rows.map((x) => (x.id === id ? { ...x, st: 'Published' } : x));
+      rows = rows.map((x) => (x.id === id ? { ...x, st: "Published" } : x));
       msg = `${id} dipublish.`;
     }
   }
   async function download(r: Row) {
-    msg = '';
-    const blob = await buildReportPdf({ reportId: r.id, vehicle: r.car, score: r.score, grade: r.score >= 90 ? 'A' : r.score >= 80 ? 'B' : 'C', inspector: r.insp, date: r.date });
-    const a = document.createElement('a');
+    msg = "";
+    const blob = await buildReportPdf({
+      reportId: r.id,
+      vehicle: r.car,
+      score: r.score,
+      grade: gradeFromScore(r.score),
+      inspector: r.insp,
+      date: r.date,
+      recommendation: recoLabel(recoFromScore(r.score)),
+    });
+    const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `${r.id.replace('#', '')}.pdf`;
+    a.download = `${r.id.replace("#", "")}.pdf`;
     a.click();
     URL.revokeObjectURL(a.href);
     msg = `${r.id} terunduh.`;
@@ -58,9 +119,13 @@
     const s = Math.max(0, Math.min(100, Math.round(editScore) || 0));
     const row = rows.find((x) => x.id === id);
     if (row?.orderId) {
-      await api.post('/inspections/submit', {
-        orderId: row.orderId, inspectorId: row.inspectorId ?? 'u-bsantoso',
-        score: s, grade: s >= 90 ? 'A' : s >= 80 ? 'B' : 'C', recommendation: '-', repairEstimate: 0
+      await api.post("/inspections/submit", {
+        orderId: row.orderId,
+        inspectorId: row.inspectorId ?? "u-bsantoso",
+        score: s,
+        grade: s >= 90 ? "A" : s >= 80 ? "B" : "C",
+        recommendation: "-",
+        repairEstimate: 0,
       });
     }
     rows = rows.map((r) => (r.id === id ? { ...r, score: s } : r));
@@ -68,42 +133,93 @@
     msg = `${id} skor diperbarui ke ${s}.`;
   }
 </script>
+
 <svelte:head><title>Admin Reports</title></svelte:head>
 <div class="grid gap-4">
   <div>
     <h1 class="text-[1.5rem] font-bold tracking-tight">Inspection Reports</h1>
-    <p class="text-[0.8125rem] text-slate-500">Audit, verify, and publish clinical vehicle inspection reports.</p>
+    <p class="text-[0.8125rem] text-slate-500">
+      Audit, verify, and publish clinical vehicle inspection reports.
+    </p>
   </div>
   <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
     {#each stats as s}
-      <div class="ts-card"><p class="ts-eyebrow">{s.k}</p><p class="mt-1 flex flex-wrap items-center gap-2 text-xl font-extrabold">{s.v} <span class={s.dc}>{s.d}</span></p></div>
+      <div class="ts-card">
+        <p class="ts-eyebrow">{s.k}</p>
+        <p
+          class="mt-1 flex flex-wrap items-center gap-2 text-xl font-extrabold"
+        >
+          {s.v} <span class={s.dc}>{s.d}</span>
+        </p>
+      </div>
     {/each}
   </div>
   {#if msg}<p class="text-sm text-emerald-700">{msg}</p>{/if}
   <div class="ts-card overflow-x-auto !p-0">
     <table class="w-full min-w-[680px] text-sm">
-      <thead><tr class="text-left text-slate-400"><th class="px-4 py-3 font-semibold">Report ID</th><th class="px-4 py-3 font-semibold">Vehicle Model</th><th class="px-4 py-3 font-semibold">Inspector</th><th class="px-4 py-3 font-semibold">Score</th><th class="px-4 py-3 font-semibold">Status</th><th class="px-4 py-3 font-semibold">Date</th><th class="px-4 py-3 font-semibold">Action</th></tr></thead>
+      <thead
+        ><tr class="text-left text-slate-400"
+          ><th class="px-4 py-3 font-semibold">Report ID</th><th
+            class="px-4 py-3 font-semibold">Vehicle Model</th
+          ><th class="px-4 py-3 font-semibold">Inspector</th><th
+            class="px-4 py-3 font-semibold">Score</th
+          ><th class="px-4 py-3 font-semibold">Status</th><th
+            class="px-4 py-3 font-semibold">Date</th
+          ><th class="px-4 py-3 font-semibold">Action</th></tr
+        ></thead
+      >
       <tbody>
         {#each rows as r}
           <tr class="border-t border-slate-100">
-            <td class="px-4 py-3 font-semibold">{r.id}</td><td class="px-4 py-3">{r.car}</td><td class="px-4 py-3">{r.insp}</td>
-            <td class="px-4 py-3 font-bold {scoreCls(r.score)}">{r.score} / 100</td>
-            <td class="px-4 py-3"><span class={stPill(r.st)}>{r.st}</span></td><td class="px-4 py-3">{r.date}</td>
+            <td class="px-4 py-3 font-semibold">{r.id}</td><td class="px-4 py-3"
+              >{r.car}</td
+            ><td class="px-4 py-3">{r.insp}</td>
+            <td class="px-4 py-3 font-bold {scoreCls(r.score)}"
+              >{r.score} / 100</td
+            >
+            <td class="px-4 py-3"><span class={stPill(r.st)}>{r.st}</span></td
+            ><td class="px-4 py-3">{r.date}</td>
             <td class="px-4 py-3">
               <span class="flex flex-wrap items-center gap-x-3 gap-y-1">
-                <a class="font-bold text-slate-500" title="Lihat laporan di layar" href={`/app/report/${r.id.replace(/^#/, '')}`}>Lihat</a>
-              {#if r.st === 'Published'}
-                <button class="font-bold text-brand-600" title="Unduh PDF laporan" on:click={() => download(r)}>Download</button>
-              {:else if r.st === 'Pending Review'}
-                <button class="font-bold text-brand-600" title="Setujui dan publish laporan" on:click={() => review(r.id)}>Review</button>
-              {:else if editing === r.id}
-                <span class="flex items-center gap-1">
-                  <input type="number" min="0" max="100" bind:value={editScore} class="w-16 rounded-lg border px-2 py-1 text-sm" aria-label="Skor baru" />
-                  <button class="font-bold text-emerald-600" on:click={() => saveEdit(r.id)}>Simpan</button>
-                </span>
-              {:else}
-                <button class="font-bold text-brand-600" title="Ubah skor laporan" on:click={() => startEdit(r)}>Edit</button>
-              {/if}
+                <a
+                  class="font-bold text-slate-500"
+                  title="Lihat laporan di layar"
+                  href={`/app/report/${r.id.replace(/^#/, "")}`}>Lihat</a
+                >
+                {#if r.st === "Published"}
+                  <button
+                    class="font-bold text-brand-600"
+                    title="Unduh PDF laporan"
+                    on:click={() => download(r)}>Download</button
+                  >
+                {:else if r.st === "Pending Review"}
+                  <button
+                    class="font-bold text-brand-600"
+                    title="Setujui dan publish laporan"
+                    on:click={() => review(r.id)}>Review</button
+                  >
+                {:else if editing === r.id}
+                  <span class="flex items-center gap-1">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      bind:value={editScore}
+                      class="w-16 rounded-lg border px-2 py-1 text-sm"
+                      aria-label="Skor baru"
+                    />
+                    <button
+                      class="font-bold text-emerald-600"
+                      on:click={() => saveEdit(r.id)}>Simpan</button
+                    >
+                  </span>
+                {:else}
+                  <button
+                    class="font-bold text-brand-600"
+                    title="Ubah skor laporan"
+                    on:click={() => startEdit(r)}>Edit</button
+                  >
+                {/if}
               </span>
             </td>
           </tr>

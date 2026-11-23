@@ -11,7 +11,6 @@
 ALTER TABLE vehicles ADD COLUMN location_area TEXT;
 
 UPDATE vehicles SET location_area = 'Jakarta Selatan'    WHERE id = 'civic-2021';
-UPDATE vehicles SET location_area = 'Jakarta Utara'      WHERE id = 'porsche-911-2022';
 UPDATE vehicles SET location_area = 'Jakarta Selatan'    WHERE id = 'avanza-2022';
 UPDATE vehicles SET location_area = 'Tangerang Selatan'  WHERE id = 'innova-2020';
 UPDATE vehicles SET location_area = 'Kota Bekasi'        WHERE id = 'xpander-2021';

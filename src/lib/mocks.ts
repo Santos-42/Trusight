@@ -62,21 +62,6 @@ export const mockVehicles: MockVehicle[] = [
     coverR2: null
   },
   {
-    id: 'porsche-911-2022',
-    title: 'Porsche 911 Carrera S 2022',
-    year: 2022,
-    mileage: 12400,
-    price: 4750000000,
-    location: 'Pantai Indah Kapuk, Jakarta Utara',
-    locationArea: 'Jakarta Utara',
-    status: 'certified',
-    score: 94,
-    grade: 'A',
-    recommendation: 'beli',
-    cover: '/vehicles/porsche-911-2022/hero.jpg',
-    coverR2: null
-  },
-  {
     id: 'avanza-2022',
     title: 'Toyota Avanza Veloz 2022',
     year: 2022,
